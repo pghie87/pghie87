@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Add a new employee to the system</description>
+   <name>TC_Add_Employee</name>
+   <tag>employee,pim</tag>
+   <comment></comment>
+   <testCaseGuid>p1o2i3u4-y5t6-r7e8-w9q0-z1x2c3v4b5n6</testCaseGuid>
+   <variable>
+      <defaultValue>'John'</defaultValue>
+      <description></description>
+      <id>7y6t5r4e-3w2q-1z9x-8c7v-6b5n4m3l2k1j</id>
+      <masked>false</masked>
+      <name>firstName</name>
+   </variable>
+   <variable>
+      <defaultValue>'Doe'</defaultValue>
+      <description></description>
+      <id>1j2k3l4m-5n6b-7v8c-9x0z-q1w2e3r4t5y6</id>
+      <masked>false</masked>
+      <name>lastName</name>
+   </variable>
+</TestCaseEntity>
