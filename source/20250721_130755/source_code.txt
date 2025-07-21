@@ -1,0 +1,982 @@
+/* === FILE: /src/store/CartStore.js === */
+import { useState, useEffect } from 'react';
+import CartAPI from '../api/CartAPI';
+import InventoryAPI from '../api/InventoryAPI';
+import NotificationService from '../services/NotificationService';
+
+/**
+ * CartStore - Manages cart state and operations
+ * Central store for handling shopping cart functionality including
+ * adding items, updating quantities, and calculating totals
+ */
+class CartStore {
+  constructor() {
+    this.items = [];
+    this.loading = false;
+    this.error = null;
+    this.updatingItems = {};
+    this.cartAPI = new CartAPI();
+    this.inventoryAPI = new InventoryAPI();
+    this.notificationService = new NotificationService();
+  }
+
+  /**
+   * Adds a product to the cart with specified quantity and attributes
+   * @param {Object} product - Product object with details needed for cart
+   * @param {number} quantity - Quantity to add
+   * @param {Object} attributes - Optional product attributes/configurations
+   * @returns {Promise<void>} Promise that resolves when operation completes
+   */
+  async addItem(product, quantity, attributes = {}) {
+    if (!product || !product.id) {
+      throw new Error('Invalid product');
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new Error('Quantity must be a positive integer');
+    }
+
+    // Check if product has required attributes and validate them
+    if (product.requiredAttributes) {
+      for (const attr of product.requiredAttributes) {
+        if (!attributes[attr] && attributes[attr] !== 0) {
+          throw new Error(`Please select ${attr}`);
+        }
+      }
+    }
+
+    try {
+      this.loading = true;
+      
+      // Check inventory availability
+      const inventoryCheck = await this.inventoryAPI.checkAvailability(product.id, quantity);
+      
+      if (!inventoryCheck.available) {
+        if (inventoryCheck.maxAvailable > 0) {
+          throw new Error(`Sorry, only ${inventoryCheck.maxAvailable} items available. Please adjust your quantity.`);
+        } else {
+          throw new Error('This item is currently out of stock.');
+        }
+      }
+      
+      // Check if item already exists in cart with same attributes
+      const existingItem = this.items.find(item => 
+        item.productId === product.id && 
+        JSON.stringify(item.attributes) === JSON.stringify(attributes)
+      );
+      
+      if (existingItem) {
+        // Update quantity instead of adding new item
+        const newQuantity = existingItem.quantity + quantity;
+        
+        // Validate combined quantity
+        if (newQuantity > inventoryCheck.maxAvailable) {
+          throw new Error(`Cannot add ${quantity} more. Cart would exceed available inventory.`);
+        }
+        
+        return await this.updateItemQuantity(existingItem.id, newQuantity);
+      }
+      
+      // Prepare item data for API
+      const itemData = {
+        productId: product.id,
+        quantity: quantity,
+        attributes: attributes
+      };
+      
+      // Call API to add item
+      const response = await this.cartAPI.addToCart(product.id, quantity, attributes);
+      
+      // Update local cart state
+      this.updateCartState(response);
+      
+      // Show success notification
+      this.notificationService.showSuccess(`${product.name} added to your cart`);
+      
+      return response;
+    } catch (error) {
+      this.error = error.message;
+      this.notificationService.showError(error.message);
+      throw error;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Updates the quantity of a specific cart item
+   * @param {string} itemId - ID of the cart item to update
+   * @param {number} quantity - New quantity value
+   * @returns {Promise<void>} Promise that resolves when operation completes
+   */
+  async updateItemQuantity(itemId, quantity) {
+    const item = this.items.find(item => item.id === itemId);
+    
+    if (!item) {
+      throw new Error('Item not found in cart');
+    }
+    
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      throw new Error('Quantity must be a non-negative integer');
+    }
+    
+    // Check if quantity actually changed
+    if (item.quantity === quantity) {
+      return; // No change needed
+    }
+    
+    try {
+      // Set loading state for this specific item
+      this.updatingItems = { ...this.updatingItems, [itemId]: true };
+      
+      // If quantity is 0, remove the item instead
+      if (quantity === 0) {
+        return await this.removeItem(itemId);
+      }
+      
+      // Apply min/max constraints
+      if (quantity < item.minQuantity) {
+        quantity = item.minQuantity;
+        this.notificationService.showWarning(`Quantity adjusted to minimum: ${item.minQuantity}`);
+      }
+      
+      if (quantity > item.maxQuantity) {
+        quantity = item.maxQuantity;
+        this.notificationService.showWarning(`Quantity adjusted to maximum: ${item.maxQuantity}`);
+      }
+      
+      // If new quantity is still valid, check inventory
+      if (quantity > item.quantity) {
+        // Only check inventory if increasing quantity
+        const inventoryCheck = await this.inventoryAPI.checkAvailability(
+          item.productId,
+          quantity
+        );
+        
+        if (!inventoryCheck.available) {
+          if (inventoryCheck.maxAvailable > 0) {
+            quantity = inventoryCheck.maxAvailable;
+            this.notificationService.showWarning(`Quantity adjusted to maximum available: ${quantity}`);
+          } else {
+            throw new Error('This item is no longer in stock');
+          }
+        }
+      }
+      
+      // Call API to update quantity
+      const response = await this.cartAPI.updateCartItem(itemId, { quantity });
+      
+      // Update local cart state
+      this.updateCartState(response);
+      
+      return response;
+    } catch (error) {
+      this.error = error.message;
+      this.notificationService.showError(error.message);
+      throw error;
+    } finally {
+      this.updatingItems = { ...this.updatingItems, [itemId]: false };
+    }
+  }
+
+  /**
+   * Removes an item from the cart
+   * @param {string} itemId - ID of the cart item to remove
+   * @returns {Promise<void>} Promise that resolves when operation completes
+   */
+  async removeItem(itemId) {
+    try {
+      this.updatingItems = { ...this.updatingItems, [itemId]: true };
+      
+      const response = await this.cartAPI.removeCartItem(itemId);
+      
+      // Update local cart state
+      this.updateCartState(response);
+      
+      this.notificationService.showSuccess("Item removed from cart");
+      
+      return response;
+    } catch (error) {
+      this.error = error.message;
+      this.notificationService.showError(error.message);
+      throw error;
+    } finally {
+      const updatingItems = { ...this.updatingItems };
+      delete updatingItems[itemId];
+      this.updatingItems = updatingItems;
+    }
+  }
+
+  /**
+   * Updates the internal cart state based on API response
+   * @param {Object} cartData - Cart data from API response
+   * @private
+   */
+  updateCartState(cartData) {
+    if (!cartData) return;
+    
+    this.items = cartData.items || [];
+    this.error = null;
+  }
+
+  /**
+   * Gets the current cart items
+   * @returns {Array} List of cart items
+   */
+  getCart() {
+    return this.items;
+  }
+
+  /**
+   * Gets the total number of items in the cart
+   * @returns {number} Total item count
+   */
+  getItemCount() {
+    return this.items.reduce((count, item) => count + item.quantity, 0);
+  }
+
+  /**
+   * Gets the unique number of products in the cart
+   * @returns {number} Unique item count
+   */
+  getUniqueItemCount() {
+    return this.items.length;
+  }
+
+  /**
+   * Calculates subtotal of all items in cart
+   * @returns {number} Subtotal price
+   */
+  getSubtotal() {
+    return this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }
+
+  /**
+   * Calculates total price of all items in cart
+   * @returns {number} Total price including discounts
+   */
+  getTotalPrice() {
+    const subtotal = this.getSubtotal();
+    const discountAmount = this.items.reduce((sum, item) => {
+      if (item.discounts && Array.isArray(item.discounts)) {
+        return sum + item.discounts.reduce((discSum, disc) => discSum + disc.amount, 0);
+      }
+      return sum;
+    }, 0);
+    
+    return subtotal - discountAmount;
+  }
+
+  /**
+   * Checks if the cart is currently loading
+   * @returns {boolean} Loading state
+   */
+  isLoading() {
+    return this.loading;
+  }
+
+  /**
+   * Checks if a specific item is being updated
+   * @param {string} itemId - ID of the cart item
+   * @returns {boolean} Item updating state
+   */
+  isItemUpdating(itemId) {
+    return Boolean(this.updatingItems[itemId]);
+  }
+
+  /**
+   * Gets current error message
+   * @returns {string|null} Error message or null
+   */
+  getError() {
+    return this.error;
+  }
+
+  /**
+   * Clears current error state
+   */
+  clearError() {
+    this.error = null;
+  }
+
+  /**
+   * Initializes the cart by fetching from API
+   * @returns {Promise<void>}
+   */
+  async fetchCart() {
+    try {
+      this.loading = true;
+      const response = await this.cartAPI.fetchCart();
+      this.updateCartState(response);
+      return response;
+    } catch (error) {
+      this.error = error.message;
+      throw error;
+    } finally {
+      this.loading = false;
+    }
+  }
+}
+
+/**
+ * Hook that provides cart functionality to React components
+ * @returns {Object} Cart store methods and state
+ */
+export function useCartStore() {
+  const [store] = useState(() => new CartStore());
+  const [items, setItems] = useState(store.items);
+  const [loading, setLoading] = useState(store.loading);
+  const [error, setError] = useState(store.error);
+  const [updatingItems, setUpdatingItems] = useState(store.updatingItems);
+
+  useEffect(() => {
+    // Initialize cart on mount
+    store.fetchCart().catch(() => {}); // Silently catch to avoid unhandled promise
+    
+    // Define update listener
+    const updateListener = () => {
+      setItems([...store.items]);
+      setLoading(store.loading);
+      setError(store.error);
+      setUpdatingItems({...store.updatingItems});
+    };
+    
+    // Subscribe to store updates (simplified implementation)
+    const interval = setInterval(updateListener, 100);
+    
+    // Cleanup
+    return () => clearInterval(interval);
+  }, [store]);
+
+  return {
+    items,
+    loading,
+    error,
+    updatingItems,
+    addItem: (product, quantity, attributes) => store.addItem(product, quantity, attributes),
+    updateItemQuantity: (itemId, quantity) => store.updateItemQuantity(itemId, quantity),
+    removeItem: (itemId) => store.removeItem(itemId),
+    getItemCount: () => store.getItemCount(),
+    getUniqueItemCount: () => store.getUniqueItemCount(),
+    getSubtotal: () => store.getSubtotal(),
+    getTotalPrice: () => store.getTotalPrice(),
+    clearError: () => store.clearError(),
+    isItemUpdating: (itemId) => store.isItemUpdating(itemId),
+  };
+}
+
+export default CartStore;
+
+/* === FILE: /src/api/CartAPI.js === */
+/**
+ * CartAPI - Handles API communication for cart operations
+ */
+class CartAPI {
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_API_URL || '/api/v1';
+    this.cartEndpoint = `${this.baseUrl}/cart`;
+  }
+
+  /**
+   * Helper method to handle API requests
+   * @param {string} url - API endpoint
+   * @param {Object} options - Fetch options
+   * @returns {Promise<Object>} API response
+   * @private
+   */
+  async _fetchWithErrorHandling(url, options = {}) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+        credentials: 'include', // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please sign in again.');
+        } else if (response.status === 409) {
+          throw new Error('Product inventory has changed. Please refresh and try again.');
+        } else if (response.status === 422) {
+          throw new Error(errorData.message || 'Validation error. Please check your inputs.');
+        } else {
+          throw new Error(errorData.message || 'An error occurred with your request.');
+        }
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches current cart contents
+   * @returns {Promise<Object>} Cart data
+   */
+  async fetchCart() {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/items`);
+  }
+
+  /**
+   * Adds a product to the cart
+   * @param {string} productId - ID of the product
+   * @param {number} quantity - Quantity to add
+   * @param {Object} attributes - Product attributes/options
+   * @returns {Promise<Object>} Updated cart data
+   */
+  async addToCart(productId, quantity, attributes = {}) {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/items`, {
+      method: 'POST',
+      body: JSON.stringify({ productId, quantity, attributes }),
+    });
+  }
+
+  /**
+   * Updates a cart item
+   * @param {string} itemId - ID of the cart item
+   * @param {Object} updates - Fields to update (quantity, attributes)
+   * @returns {Promise<Object>} Updated cart data
+   */
+  async updateCartItem(itemId, updates) {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  /**
+   * Removes an item from the cart
+   * @param {string} itemId - ID of the cart item to remove
+   * @returns {Promise<Object>} Updated cart data
+   */
+  async removeCartItem(itemId) {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/items/${itemId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Applies a promo code to the cart
+   * @param {string} code - Promotion code
+   * @returns {Promise<Object>} Updated cart with applied promotion
+   */
+  async applyPromoCode(code) {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/promotions`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  /**
+   * Gets shipping options for the cart
+   * @param {string} zipCode - Shipping destination zip code
+   * @returns {Promise<Array>} Available shipping options
+   */
+  async getShippingOptions(zipCode) {
+    return this._fetchWithErrorHandling(`${this.cartEndpoint}/shipping-options?zipCode=${zipCode}`);
+  }
+}
+
+export default CartAPI;
+
+/* === FILE: /src/api/InventoryAPI.js === */
+/**
+ * InventoryAPI - Handles API communication for inventory operations
+ */
+class InventoryAPI {
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_API_URL || '/api/v1';
+    this.inventoryEndpoint = `${this.baseUrl}/inventory`;
+  }
+
+  /**
+   * Helper method to handle API requests
+   * @param {string} url - API endpoint
+   * @param {Object} options - Fetch options
+   * @returns {Promise<Object>} API response
+   * @private
+   */
+  async _fetchWithErrorHandling(url, options = {}) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+        credentials: 'include', // Include cookies for authentication
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+        throw new Error(errorData.message || 'An error occurred with your request.');
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Checks if a product is available in requested quantity
+   * @param {string} productId - ID of the product
+   * @param {number} quantity - Requested quantity
+   * @returns {Promise<Object>} Availability information
+   */
+  async checkAvailability(productId, quantity) {
+    return this._fetchWithErrorHandling(
+      `${this.inventoryEndpoint}/check?productId=${encodeURIComponent(productId)}&quantity=${quantity}`
+    );
+  }
+
+  /**
+   * Gets current stock level for a product
+   * @param {string} productId - ID of the product
+   * @returns {Promise<Object>} Stock information
+   */
+  async getStockLevel(productId) {
+    return this._fetchWithErrorHandling(
+      `${this.inventoryEndpoint}/stock?productId=${encodeURIComponent(productId)}`
+    );
+  }
+}
+
+export default InventoryAPI;
+
+/* === FILE: /src/services/NotificationService.js === */
+/**
+ * NotificationService - Manages user notifications
+ */
+class NotificationService {
+  constructor() {
+    // Configuration for notifications
+    this.defaultDuration = 5000; // 5 seconds
+    this.position = 'top-right';
+    
+    // In a real implementation, this would use a UI component library like react-toastify
+    // This is a simple implementation for demonstration
+    this.listeners = [];
+  }
+
+  /**
+   * Shows a success notification
+   * @param {string} message - Message to display
+   */
+  showSuccess(message) {
+    this._notify({
+      type: 'success',
+      message,
+      duration: this.defaultDuration
+    });
+    console.log(`✅ SUCCESS: ${message}`);
+  }
+
+  /**
+   * Shows an error notification
+   * @param {string} message - Error message
+   */
+  showError(message) {
+    this._notify({
+      type: 'error',
+      message,
+      duration: this.defaultDuration * 1.5 // Error messages stay longer
+    });
+    console.error(`❌ ERROR: ${message}`);
+  }
+
+  /**
+   * Shows a warning notification
+   * @param {string} message - Warning message
+   */
+  showWarning(message) {
+    this._notify({
+      type: 'warning',
+      message,
+      duration: this.defaultDuration * 1.2
+    });
+    console.warn(`⚠️ WARNING: ${message}`);
+  }
+
+  /**
+   * Shows an info notification
+   * @param {string} message - Information message
+   */
+  showInfo(message) {
+    this._notify({
+      type: 'info',
+      message,
+      duration: this.defaultDuration
+    });
+    console.info(`ℹ️ INFO: ${message}`);
+  }
+
+  /**
+   * Clears all active notifications
+   */
+  clear() {
+    this._notify({ type: 'clear' });
+  }
+
+  /**
+   * Internal method to trigger notification
+   * @param {Object} notification - Notification data
+   * @private
+   */
+  _notify(notification) {
+    // Notify all listeners
+    this.listeners.forEach(listener => listener(notification));
+    
+    // In a real implementation, this would use a UI library's API
+  }
+
+  /**
+   * Subscribe to notifications (for UI components)
+   * @param {Function} listener - Callback function
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(listener) {
+    this.listeners.push(listener);
+    
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+}
+
+export default NotificationService;
+
+/* === FILE: /src/components/AddToCartButton.js === */
+import React, { useState } from 'react';
+import { useCartStore } from '../store/CartStore';
+import QuantitySelector from './QuantitySelector';
+
+/**
+ * AddToCartButton Component
+ * Button that adds products to the cart, with optional quantity selector
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.product - Product to add to cart
+ * @param {number} props.initialQuantity - Initial quantity value (default: 1)
+ * @param {number} props.minQuantity - Minimum quantity allowed (default: 1)
+ * @param {number} props.maxQuantity - Maximum quantity allowed
+ * @param {boolean} props.disabled - Whether button is disabled
+ * @param {string} props.buttonText - Custom button text
+ * @param {string} props.buttonSize - Button size (small, medium, large)
+ * @param {boolean} props.showQuantitySelector - Whether to show quantity selector
+ * @param {Function} props.onAddToCart - Callback after successful add
+ * @param {Function} props.onError - Callback on error
+ */
+const AddToCartButton = ({
+  product,
+  initialQuantity = 1,
+  minQuantity = 1,
+  maxQuantity = 99,
+  disabled = false,
+  buttonText = 'Add to Cart',
+  buttonSize = 'medium',
+  showQuantitySelector = false,
+  onAddToCart,
+  onError
+}) => {
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { addItem } = useCartStore();
+
+  /**
+   * Validates quantity against min/max constraints
+   * @param {number} qty - Quantity to validate
+   * @returns {boolean} Whether quantity is valid
+   */
+  const validateQuantity = (qty) => {
+    return Number.isInteger(qty) && qty >= minQuantity && qty <= maxQuantity;
+  };
+
+  /**
+   * Handles adding product to cart
+   */
+  const handleAddToCart = async () => {
+    if (!validateQuantity(quantity)) {
+      const errorMessage = `Please select a quantity between ${minQuantity} and ${maxQuantity}`;
+      setError(errorMessage);
+      onError && onError(errorMessage);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await addItem(product, quantity);
+      onAddToCart && onAddToCart(product, quantity);
+    } catch (err) {
+      setError(err.message);
+      onError && onError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handles quantity change from selector
+   * @param {number} newQuantity - New quantity value
+   */
+  const handleQuantityChange = (newQuantity) => {
+    setQuantity(newQuantity);
+    setError(null);
+  };
+
+  // Determine CSS classes based on props
+  const buttonClasses = [
+    'add-to-cart-button',
+    `size-${buttonSize}`,
+    isLoading ? 'loading' : '',
+    disabled ? 'disabled' : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className="add-to-cart-container">
+      {showQuantitySelector && (
+        <div className="quantity-selector-wrapper">
+          <QuantitySelector
+            quantity={quantity}
+            minQuantity={minQuantity}
+            maxQuantity={maxQuantity}
+            onChange={handleQuantityChange}
+            disabled={disabled || isLoading}
+          />
+        </div>
+      )}
+      
+      <button
+        className={buttonClasses}
+        onClick={handleAddToCart}
+        disabled={disabled || isLoading}
+        aria-label={`Add ${product.name} to cart`}
+      >
+        {isLoading ? (
+          <span className="loading-indicator" aria-hidden="true">
+            Loading...
+          </span>
+        ) : (
+          buttonText
+        )}
+      </button>
+      
+      {error && (
+        <div className="error-message" role="alert">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AddToCartButton;
+
+/* === FILE: /src/components/QuantitySelector.js === */
+import React, { useState, useEffect } from 'react';
+
+/**
+ * QuantitySelector Component
+ * Input field with increment/decrement buttons to select product quantity
+ * 
+ * @param {Object} props - Component props
+ * @param {string} props.itemId - Optional ID of the cart item
+ * @param {number} props.quantity - Current quantity
+ * @param {number} props.minQuantity - Minimum quantity allowed
+ * @param {number} props.maxQuantity - Maximum quantity allowed
+ * @param {boolean} props.disabled - Whether selector is disabled
+ * @param {boolean} props.isLoading - Whether selector is in loading state
+ * @param {Function} props.onChange - Callback when quantity changes
+ * @param {boolean} props.showLabel - Whether to show a label
+ * @param {string} props.size - Component size (small, medium, large)
+ * @param {boolean} props.allowDirectInput - Allow typing in quantity field
+ */
+const QuantitySelector = ({
+  itemId,
+  quantity,
+  minQuantity = 1,
+  maxQuantity = 99,
+  disabled = false,
+  isLoading = false,
+  onChange,
+  showLabel = false,
+  size = 'medium',
+  allowDirectInput = true
+}) => {
+  const [localQuantity, setLocalQuantity] = useState(quantity);
+  
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalQuantity(quantity);
+  }, [quantity]);
+
+  /**
+   * Validates quantity against min/max constraints
+   * @param {number} qty - Quantity to validate
+   * @returns {number} Validated quantity
+   */
+  const validateQuantity = (qty) => {
+    if (isNaN(qty) || qty < minQuantity) {
+      return minQuantity;
+    }
+    if (qty > maxQuantity) {
+      return maxQuantity;
+    }
+    return qty;
+  };
+
+  /**
+   * Handles increment button click
+   */
+  const handleIncrement = () => {
+    if (disabled || isLoading || localQuantity >= maxQuantity) return;
+    
+    const newQuantity = localQuantity + 1;
+    setLocalQuantity(newQuantity);
+    onChange(newQuantity);
+  };
+
+  /**
+   * Handles decrement button click
+   */
+  const handleDecrement = () => {
+    if (disabled || isLoading || localQuantity <= minQuantity) return;
+    
+    const newQuantity = localQuantity - 1;
+    setLocalQuantity(newQuantity);
+    onChange(newQuantity);
+  };
+
+  /**
+   * Handles direct input change
+   * @param {Event} event - Input change event
+   */
+  const handleInputChange = (event) => {
+    if (disabled || isLoading || !allowDirectInput) return;
+    
+    let newValue = parseInt(event.target.value, 10);
+    
+    if (isNaN(newValue) || newValue < minQuantity) {
+      newValue = minQuantity;
+    } else if (newValue > maxQuantity) {
+      newValue = maxQuantity;
+    }
+    
+    setLocalQuantity(newValue);
+  };
+
+  /**
+   * Handles input blur event
+   * Notifies parent component about final value
+   */
+  const handleBlur = () => {
+    onChange(localQuantity);
+  };
+
+  // Container classes based on props
+  const containerClasses = [
+    'quantity-selector',
+    `size-${size}`,
+    disabled ? 'disabled' : '',
+    isLoading ? 'loading' : ''
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className={containerClasses} data-item-id={itemId}>
+      {showLabel && (
+        <label htmlFor={`quantity-input-${itemId || 'new'}`} className="quantity-label">
+          Quantity:
+        </label>
+      )}
+      
+      <div className="quantity-controls">
+        <button
+          type="button"
+          className="quantity-btn decrement"
+          onClick={handleDecrement}
+          disabled={disabled || isLoading || localQuantity <= minQuantity}
+          aria-label="Decrease quantity"
+        >
+          <span aria-hidden="true">−</span>
+        </button>
+        
+        <input
+          id={`quantity-input-${itemId || 'new'}`}
+          type="text"
+          className="quantity-input"
+          value={localQuantity}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          disabled={disabled || isLoading || !allowDirectInput}
+          readOnly={!allowDirectInput}
+          aria-label="Quantity"
+          aria-valuemin={minQuantity}
+          aria-valuemax={maxQuantity}
+          aria-valuenow={localQuantity}
+        />
+        
+        <button
+          type="button"
+          className="quantity-btn increment"
+          onClick={handleIncrement}
+          disabled={disabled || isLoading || localQuantity >= maxQuantity}
+          aria-label="Increase quantity"
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      </div>
+      
+      {isLoading && (
+        <div className="loading-indicator" aria-hidden="true">
+          Updating...
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QuantitySelector;
+
+/* === FILE: /src/components/CartItemComponent.js === */
+import React, { useState } from 'react';
+import { useCartStore } from '../store/CartStore';
+import QuantitySelector from './QuantitySelector';
+
+/**
+ * CartItemComponent
+ * Displays a single item in the cart with controls to update quantity or remove
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.item - Cart item data
+ */
+const CartItemComponent = ({ item }) => {
+  const [error, setError] = useState(null);
+  const { updateItemQuantity, removeItem, isItemUpdating } = useCartStore();
+  
+  const isUpdating = isItemUpdating(item.id);
+
+  /**
+   * Handles quantity change from selector
+   * @param {number} newQuantity - New quantity value
+   */
+  const handleQuantityChange = async (newQuantity) => {
+    try {
+      setError(null);
+      await updateItemQuantity(item.id, newQuantity);
+    } catch (err
