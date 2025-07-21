@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username field on forgot password page</description>
+   <name>txt_Username</name>
+   <tag></tag>
+   <elementGuidId>89abcdef-ghij-klmn-opqr-89012ijklmno</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>gggggggg-hhhh-iiii-jjjj-777777777777</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>username</value>
+      <webElementGuid>hhhhhhhh-iiii-jjjj-kkkk-888888888888</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
