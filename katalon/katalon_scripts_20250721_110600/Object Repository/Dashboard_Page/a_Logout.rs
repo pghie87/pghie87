@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Logout link in user dropdown menu</description>
+   <name>a_Logout</name>
+   <tag></tag>
+   <elementGuidId>6f7g8h9i-0j1k-2l3m-4n5o-6p7q8r9s0t1u</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(.,'Logout')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-userdropdown-link:contains('Logout')</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//a[contains(text(),'Logout')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>llll1111-mmmm-nnnn-oooo-ppppqqqqrrrr</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Logout</value>
+      <webElementGuid>ssss1111-tttt-uuuu-vvvv-wwwwxxxxyyyyz</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
