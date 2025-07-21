@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button</description>
+   <name>button_Login</name>
+   <tag></tag>
+   <elementGuidId>h5i6j7k8-l9m0-n1o2-p3q4-r5s6t7u8v9</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[contains(@class, 'orangehrm-login-button')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>.orangehrm-login-button</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>button</value>
+      <webElementGuid>i6j7k8l9-m0n1-o2p3-q4r5-s6t7u8v9w0</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>submit</value>
+      <webElementGuid>j7k8l9m0-n1o2-p3q4-r5s6-t7u8v9w0x1</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>orangehrm-login-button</value>
+      <webElementGuid>k8l9m0n1-o2p3-q4r5-s6t7-u8v9w0x1y2</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
