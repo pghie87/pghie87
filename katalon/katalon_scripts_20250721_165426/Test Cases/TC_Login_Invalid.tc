@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Login with invalid credentials</description>
+   <name>TC_Login_Invalid</name>
+   <tag>login,negative</tag>
+   <comment></comment>
+   <testCaseGuid>q1w2e3r4-t5y6-u7i8-o9p0-a1s2d3f4g5h6</testCaseGuid>
+   <variable>
+      <defaultValue>'InvalidUser'</defaultValue>
+      <description></description>
+      <id>1q2w3e4r-5t6y-7u8i-9o0p-a1s2d3f4g5h6</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'wrongpassword'</defaultValue>
+      <description></description>
+      <id>6h5g4f3d-2s1a-p0o9-i8u7-y6t5r4e3w2q1</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
