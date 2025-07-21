@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User dropdown menu in header</description>
+   <name>span_User_Dropdown</name>
+   <tag></tag>
+   <elementGuidId>g1h2i3j4-k5l6-m7n8-o9p0-q1r2s3t4u5v6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-userdropdown-tab</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>a9b8c7d6-e5f4-g3h2-i1j0-k9l8m7n6o5p4</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
