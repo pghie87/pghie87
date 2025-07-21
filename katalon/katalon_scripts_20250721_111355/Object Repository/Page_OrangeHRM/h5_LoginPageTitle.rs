@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login Page Title</description>
+   <name>h5_LoginPageTitle</name>
+   <tag></tag>
+   <elementGuidId>a2b3c4d5-e6f7-8g9h-0i1j-k2l3m4n5o6p</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//h5[text()='Login']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h5[contains(@class, 'orangehrm-login-title')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>.orangehrm-login-title</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>h5</value>
+      <webElementGuid>3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>orangehrm-login-title</value>
+      <webElementGuid>4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Login</value>
+      <webElementGuid>5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
