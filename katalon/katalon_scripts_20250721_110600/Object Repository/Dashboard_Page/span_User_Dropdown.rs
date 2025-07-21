@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User dropdown menu in top-right corner</description>
+   <name>span_User_Dropdown</name>
+   <tag></tag>
+   <elementGuidId>5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-userdropdown-tab</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='oxd-topbar-header-userarea']/ul/li/span</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>xxxx1111-yyyy-zzzz-aaaa-bbbbccccdddd</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-userdropdown-tab</value>
+      <webElementGuid>eeee1111-ffff-gggg-hhhh-iiiijjjjkkkk</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
