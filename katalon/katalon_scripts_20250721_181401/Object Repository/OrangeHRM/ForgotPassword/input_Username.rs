@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input on Reset Password page</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>k1l2m3n4-o5p6-q7r8-s9t0-u1v2w3x4y5z6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>q7r8s9t0-u1v2-w3x4-y5z6-a7b8c9d0e1f2</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>username</value>
+      <webElementGuid>r8s9t0u1-v2w3-x4y5-z6a7-b8c9d0e1f2g3</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
