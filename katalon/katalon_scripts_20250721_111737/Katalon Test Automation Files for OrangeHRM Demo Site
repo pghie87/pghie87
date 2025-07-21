@@ -1,0 +1,619 @@
+## Test Case File (Login_to_OrangeHRM.tc)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Login to OrangeHRM demo site with valid credentials</description>
+   <name>Login_to_OrangeHRM</name>
+   <tag>login, authentication</tag>
+   <comment></comment>
+   <testCaseGuid>a7e89c21-f3d8-4c9a-9da9-1234567890ab</testCaseGuid>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>fd8ae1b3-a87d-4f91-b50f-b337350c9abc</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>85d9a659-623f-4d2c-a8a8-b0c7fd123456</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## Script File (Login_to_OrangeHRM.groovy)
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Login to OrangeHRM Demo Site
+ * Author: Senior QA Engineer
+ * Date: 2023-08-15
+ */
+
+// Open browser and navigate to OrangeHRM login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load completely
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/input_username'), 10)
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/input_password'), 10)
+
+// Input credentials
+WebUI.setText(findTestObject('OrangeHRM_Login/input_username'), username)
+WebUI.setEncryptedText(findTestObject('OrangeHRM_Login/input_password'), password)
+WebUI.click(findTestObject('OrangeHRM_Login/button_login'))
+
+// Verify successful login by checking dashboard is displayed
+WebUI.waitForElementPresent(findTestObject('OrangeHRM_Dashboard/header_dashboard'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM_Dashboard/header_dashboard'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM_Dashboard/header_dashboard'), 'Dashboard')
+
+// Log out
+WebUI.click(findTestObject('OrangeHRM_Dashboard/dropdown_userProfile'))
+WebUI.waitForElementClickable(findTestObject('OrangeHRM_Dashboard/link_logout'), 5)
+WebUI.click(findTestObject('OrangeHRM_Dashboard/link_logout'))
+
+// Verify we're back at the login page
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/input_username'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM_Login/input_username'), 10)
+
+// Close the browser
+WebUI.closeBrowser()
+```
+
+## Object Repository File (OrangeHRM_Login/input_username.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input field on login page</description>
+   <name>input_username</name>
+   <tag></tag>
+   <elementGuidId>b72f8a21-73a1-48db-a897-f87fe1234567</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>1a2b3c4d-5e6f-7890-a123-456789abcdef</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>username</value>
+      <webElementGuid>2a3b4c5d-6e7f-8910-b123-456789abcdef</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>false</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Username</value>
+      <webElementGuid>3a4b5c6d-7e8f-9a10-c123-456789abcdef</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Object Repository File (OrangeHRM_Login/input_password.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field on login page</description>
+   <name>input_password</name>
+   <tag></tag>
+   <elementGuidId>c72f8a21-73a1-48db-a897-f87fe7654321</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='password']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='password']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>4a5b6c7d-8e9f-0123-d456-789abcdef012</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>5a6b7c8d-9e0f-1234-e567-89abcdef0123</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>false</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Password</value>
+      <webElementGuid>6a7b8c9d-0e1f-2345-f678-9abcdef01234</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>7a8b9c0d-1e2f-3456-g789-abcdef012345</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Object Repository File (OrangeHRM_Login/button_login.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button</description>
+   <name>button_login</name>
+   <tag></tag>
+   <elementGuidId>d72f8a21-73a1-48db-a897-f87fe9876543</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.oxd-button.oxd-button--medium.oxd-button--main.orangehrm-login-button</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>button</value>
+      <webElementGuid>8a9bacbd-ce0f-4567-h890-abcdef123456</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>submit</value>
+      <webElementGuid>9aabbccd-de0f-5678-i901-abcdef234567</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>false</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-button oxd-button--medium oxd-button--main orangehrm-login-button</value>
+      <webElementGuid>0abbccdd-ef01-6789-j012-abcdef345678</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Object Repository File (OrangeHRM_Dashboard/header_dashboard.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard header text</description>
+   <name>header_dashboard</name>
+   <tag></tag>
+   <elementGuidId>e72f8a21-73a1-48db-a897-f87fe1122334</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//h6[contains(@class, 'oxd-topbar-header-breadcrumb')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h6.oxd-text.oxd-text--h6.oxd-topbar-header-breadcrumb-module</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[contains(@class, 'oxd-topbar-header-breadcrumb')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>h6</value>
+      <webElementGuid>1bcddeef-f012-7890-k123-456789abcdef</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-topbar-header-breadcrumb</value>
+      <webElementGuid>2cddeeff-0123-8901-l234-56789abcdef0</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Dashboard</value>
+      <webElementGuid>3deefff0-1234-9012-m345-6789abcdef01</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Object Repository File (OrangeHRM_Dashboard/dropdown_userProfile.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User profile dropdown menu</description>
+   <name>dropdown_userProfile</name>
+   <tag></tag>
+   <elementGuidId>f72f8a21-73a1-48db-a897-f87fe4455667</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-userdropdown-tab</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>4effggh0-2345-0123-n456-789abcdef012</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-userdropdown-tab</value>
+      <webElementGuid>5fgghhi0-3456-1234-o567-89abcdef0123</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Object Repository File (OrangeHRM_Dashboard/link_logout.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Logout link in user dropdown</description>
+   <name>link_logout</name>
+   <tag></tag>
+   <elementGuidId>g72f8a21-73a1-48db-a897-f87fe7788990</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(text(), 'Logout')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-userdropdown-link:contains('Logout')</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//a[contains(text(), 'Logout')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>6ghhiij0-4567-2345-p678-9abcdef01234</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Logout</value>
+      <webElementGuid>7hiijjk0-5678-3456-q789-0abcdef12345</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>false</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-userdropdown-link</value>
+      <webElementGuid>8ijjkkl0-6789-4567-r890-1abcdef23456</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Test Case File (Invalid_Login_OrangeHRM.tc)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Attempt login with invalid credentials</description>
+   <name>Invalid_Login_OrangeHRM</name>
+   <tag>login, negative, authentication</tag>
+   <comment></comment>
+   <testCaseGuid>b8f90d32-g4e9-5d0a-0eb0-2345678901cd</testCaseGuid>
+   <variable>
+      <defaultValue>'invalid_user'</defaultValue>
+      <description>Invalid username for login</description>
+      <id>ge9af2c4-b98e-5g02-c61g-c438461dabed</id>
+      <masked>false</masked>
+      <name>invalid_username</name>
+   </variable>
+   <variable>
+      <defaultValue>'wrong_password'</defaultValue>
+      <description>Invalid password for login</description>
+      <id>96eab760-734g-5e3d-b9b9-c1d8ge234567</id>
+      <masked>true</masked>
+      <name>invalid_password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## Script File (Invalid_Login_OrangeHRM.groovy)
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Invalid Login to OrangeHRM Demo Site
+ * Author: Senior QA Engineer
+ * Date: 2023-08-15
+ */
+
+// Open browser and navigate to OrangeHRM login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load completely
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/input_username'), 10)
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/input_password'), 10)
+
+// Input invalid credentials
+WebUI.setText(findTestObject('OrangeHRM_Login/input_username'), invalid_username)
+WebUI.setEncryptedText(findTestObject('OrangeHRM_Login/input_password'), invalid_password)
+WebUI.click(findTestObject('OrangeHRM_Login/button_login'))
+
+// Verify error message is displayed
+WebUI.waitForElementVisible(findTestObject('OrangeHRM_Login/alert_invalidCredentials'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM_Login/alert_invalidCredentials'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM_Login/alert_invalidCredentials'), 'Invalid credentials')
+
+// Verify we're still at the login page
+WebUI.verifyElementPresent(findTestObject('OrangeHRM_Login/input_username'), 5)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM_Login/input_password'), 5)
+
+// Close the browser
+WebUI.closeBrowser()
+```
+
+## Object Repository File (OrangeHRM_Login/alert_invalidCredentials.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Invalid credentials alert message</description>
+   <name>alert_invalidCredentials</name>
+   <tag></tag>
+   <elementGuidId>h72f8a21-73a1-48db-a897-f87fe0011223</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//div[@class='oxd-alert oxd-alert--error']//p</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.oxd-alert.oxd-alert--error p</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='oxd-alert oxd-alert--error']//p</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>p</value>
+      <webElementGuid>9jkklmm1-7890-5678-s901-2abcdef34567</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Invalid credentials</value>
+      <webElementGuid>0kllmmn1-8901-6789-t012-3abcdef45678</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+## Test Suite File (OrangeHRM_Login_TestSuite.ts)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestSuiteEntity>
+   <description>Test suite for OrangeHRM login functionality</description>
+   <name>OrangeHRM_Login_TestSuite</name>
+   <tag></tag>
+   <isRerun>false</isRerun>
+   <mailRecipient></mailRecipient>
+   <numberOfRerun>0</numberOfRerun>
+   <pageLoadTimeout>30</pageLoadTimeout>
+   <pageLoadTimeoutDefault>true</pageLoadTimeoutDefault>
+   <rerunFailedTestCasesOnly>false</rerunFailedTestCasesOnly>
+   <rerunImmediately>false</rerunImmediately>
+   <testSuiteGuid>c1d2e3f4-g5h6-i7j8-k9l0-m1n2o3p4q5r6</testSuiteGuid>
+   <testCaseLink>
+      <guid>a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/Login_to_OrangeHRM</testCaseId>
+      <testDataLink>
+         <combinationType>ONE</combinationType>
+         <id>s1t2u3v4-w5x6-y7z8-a1b2-c3d4e5f6g7h8</id>
+         <iterationEntity>
+            <iterationType>SINGLE</iterationType>
+            <value></value>
+         </iterationEntity>
+         <testDataId>Data Files/LoginCredentials</testDataId>
+      </testDataLink>
+      <variableLink>
+         <testDataLinkId>s1t2u3v4-w5x6-y7z8-a1b2-c3d4e5f6g7h8</testDataLinkId>
+         <type>DATA_COLUMN</type>
+         <value>username</value>
+         <variableId>fd8ae1b3-a87d-4f91-b50f-b337350c9abc</variableId>
+      </variableLink>
+      <variableLink>
+         <testDataLinkId>s1t2u3v4-w5x6-y7z8-a1b2-c3d4e5f6g7h8</testDataLinkId>
+         <type>DATA_COLUMN</type>
+         <value>password</value>
+         <variableId>85d9a659-623f-4d2c-a8a8-b0c7fd123456</variableId>
+      </variableLink>
+   </testCaseLink>
+   <testCaseLink>
+      <guid>q7r8s9t0-u1v2-w3x4-y5z6-a7b8c9d0e1f2</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/Invalid_Login_OrangeHRM</testCaseId>
+      <testDataLink>
+         <combinationType>ONE</combinationType>
+         <id>g9h0i1j2-k3l4-m5n6-o7p8-q9r0s1t2u3v4</id>
+         <iterationEntity>
+            <iterationType>SINGLE</iterationType>
+            <value></value>
+         </iterationEntity>
+         <testDataId>Data Files/InvalidLoginCredentials</testDataId>
+      </testDataLink>
+      <variableLink>
+         <testDataLinkId>g9h0i1j2-k3l4-m5n6-o7p8-q9r0s1t2u3v4</testDataLinkId>
+         <type>DATA_COLUMN</type>
+         <value>invalid_username</value>
+         <variableId>ge9af2c4-b98e-5g02-c61g-c438461dabed</variableId>
+      </variableLink>
+      <variableLink>
+         <testDataLinkId>g9h0i1j2-k3l4-m5n6-o7p8-q9r0s1t2u3v4</testDataLinkId>
+         <type>DATA_COLUMN</type>
+         <value>invalid_password</value>
+         <variableId>96eab760-734g-5e3d-b9b9-c1d8ge234567</variableId>
+      </variableLink>
+   </testCaseLink>
+</TestSuiteEntity>
+```
+
+## Test Data File (LoginCredentials.dat)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<DataFileEntity>
+   <description>Valid login credentials for OrangeHRM</description>
+   <name>LoginCredentials</name>
+   <tag></tag>
+   <connectionProperties/>
+   <containsHeaders>true</containsHeaders>
+   <csvSeperator></csvSeperator>
+   <dataFileGUID>w5x6y7z8-a1b2-c3d4-e5f6-g7h8i9j0k1l2</dataFileGUID>
+   <dataSourceUrl></dataSourceUrl>
+   <driver>InternalData</driver>
+   <data>Admin admin123</data>
+   <internalDataColumns>
+      <columnIndex>0</columnIndex>
+      <name>username</name>
+      <size>1</size>
+   </internalDataColumns>
+   <internalDataColumns>
+      <columnIndex>1</columnIndex>
+      <name>password</name>
+      <size>1</size>
+   </internalDataColumns>
+   <isInternalPath>false</isInternalPath>
+   <query></query>
+   <secureUserAccount>false</secureUserAccount>
+   <sheetName></sheetName>
+   <usingGlobalDBSetting>false</usingGlobalDBSetting>
+</DataFileEntity>
+```
+
+## Test Data File (InvalidLoginCredentials
