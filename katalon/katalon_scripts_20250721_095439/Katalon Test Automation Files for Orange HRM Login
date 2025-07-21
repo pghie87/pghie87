@@ -1,0 +1,671 @@
+I'll create a comprehensive set of Katalon test automation files for testing the login functionality of https://opensource-demo.orangehrmlive.com/web/index.php/auth/login.
+
+## 1. Test Case File (.tc)
+
+### Login_TC001.tc
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Test case to verify login functionality with valid credentials</description>
+   <name>Login_TC001</name>
+   <tag>login,smoke,regression</tag>
+   <comment></comment>
+   <testCaseGuid>a123e456-7890-12ab-cdef-1234567890ab</testCaseGuid>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>2e3b3738-a2ec-4743-9747-a4a789d291a1</variableId>
+   </variableLinks>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>6f2b5702-fcbb-4e18-a2dc-c8b1135f16a8</variableId>
+   </variableLinks>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>2e3b3738-a2ec-4743-9747-a4a789d291a1</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>6f2b5702-fcbb-4e18-a2dc-c8b1135f16a8</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+### Login_TC002.tc
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Test case to verify login functionality with invalid credentials</description>
+   <name>Login_TC002</name>
+   <tag>login,negative,regression</tag>
+   <comment></comment>
+   <testCaseGuid>b234f567-8901-23bc-defg-2345678901bc</testCaseGuid>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>3f3c4849-b3fd-5854-0858-b5b890d302b2</variableId>
+   </variableLinks>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>7g3c6813-gdcc-5f29-b3ed-d9c246f27b9</variableId>
+   </variableLinks>
+   <variable>
+      <defaultValue>'InvalidUser'</defaultValue>
+      <description>Invalid username for login</description>
+      <id>3f3c4849-b3fd-5854-0858-b5b890d302b2</id>
+      <masked>false</masked>
+      <name>invalidUsername</name>
+   </variable>
+   <variable>
+      <defaultValue>'wrongpassword'</defaultValue>
+      <description>Invalid password for login</description>
+      <id>7g3c6813-gdcc-5f29-b3ed-d9c246f27b9</id>
+      <masked>true</masked>
+      <name>invalidPassword</name>
+   </variable>
+</TestCaseEntity>
+```
+
+### Login_TC003.tc
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Test case to verify required field validation in login form</description>
+   <name>Login_TC003</name>
+   <tag>login,validation,regression</tag>
+   <comment></comment>
+   <testCaseGuid>c345g678-9012-34cd-efgh-3456789012cd</testCaseGuid>
+</TestCaseEntity>
+```
+
+## 2. Script Files (.groovy)
+
+### Login_TC001.groovy
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Login with valid credentials
+ * 
+ * Steps:
+ * 1. Open browser and navigate to login page
+ * 2. Input valid username
+ * 3. Input valid password
+ * 4. Click login button
+ * 5. Verify successful login by checking dashboard elements
+ * 6. Close browser
+ */
+
+// Open browser and navigate to login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load
+WebUI.waitForElementVisible(findTestObject('Object Repository/Login_Page/img_Logo'), 10)
+
+// Input valid username
+WebUI.setText(findTestObject('Object Repository/Login_Page/input_Username'), username)
+
+// Input valid password
+WebUI.setEncryptedText(findTestObject('Object Repository/Login_Page/input_Password'), password)
+
+// Click login button
+WebUI.click(findTestObject('Object Repository/Login_Page/button_Login'))
+
+// Verify successful login by checking dashboard elements
+WebUI.waitForElementPresent(findTestObject('Object Repository/Dashboard_Page/h6_Dashboard'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/Dashboard_Page/h6_Dashboard'), 10)
+WebUI.verifyElementText(findTestObject('Object Repository/Dashboard_Page/h6_Dashboard'), 'Dashboard')
+
+// Verify user profile is displayed
+WebUI.verifyElementPresent(findTestObject('Object Repository/Dashboard_Page/span_UserDropdown'), 5)
+
+// Log out
+WebUI.click(findTestObject('Object Repository/Dashboard_Page/span_UserDropdown'))
+WebUI.waitForElementClickable(findTestObject('Object Repository/Dashboard_Page/a_Logout'), 5)
+WebUI.click(findTestObject('Object Repository/Dashboard_Page/a_Logout'))
+
+// Verify return to login page
+WebUI.waitForElementPresent(findTestObject('Object Repository/Login_Page/h5_LoginTitle'), 10)
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+### Login_TC002.groovy
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Login with invalid credentials
+ * 
+ * Steps:
+ * 1. Open browser and navigate to login page
+ * 2. Input invalid username
+ * 3. Input invalid password
+ * 4. Click login button
+ * 5. Verify error message is displayed
+ * 6. Close browser
+ */
+
+// Open browser and navigate to login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load
+WebUI.waitForElementVisible(findTestObject('Object Repository/Login_Page/img_Logo'), 10)
+
+// Input invalid username
+WebUI.setText(findTestObject('Object Repository/Login_Page/input_Username'), invalidUsername)
+
+// Input invalid password
+WebUI.setEncryptedText(findTestObject('Object Repository/Login_Page/input_Password'), invalidPassword)
+
+// Click login button
+WebUI.click(findTestObject('Object Repository/Login_Page/button_Login'))
+
+// Verify error message is displayed
+WebUI.waitForElementVisible(findTestObject('Object Repository/Login_Page/div_InvalidCredentials'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/Login_Page/div_InvalidCredentials'), 5)
+WebUI.verifyElementText(findTestObject('Object Repository/Login_Page/div_InvalidCredentials'), 'Invalid credentials')
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+### Login_TC003.groovy
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Verify required field validation in login form
+ * 
+ * Steps:
+ * 1. Open browser and navigate to login page
+ * 2. Click login button without entering username and password
+ * 3. Verify required field error messages
+ * 4. Enter only username and click login
+ * 5. Verify password required error message
+ * 6. Enter only password and click login
+ * 7. Verify username required error message
+ * 8. Close browser
+ */
+
+// Open browser and navigate to login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load
+WebUI.waitForElementVisible(findTestObject('Object Repository/Login_Page/img_Logo'), 10)
+
+// Click login button without entering username and password
+WebUI.click(findTestObject('Object Repository/Login_Page/button_Login'))
+
+// Verify required field error messages
+WebUI.waitForElementVisible(findTestObject('Object Repository/Login_Page/span_RequiredUsername'), 10)
+WebUI.verifyElementText(findTestObject('Object Repository/Login_Page/span_RequiredUsername'), 'Required')
+WebUI.verifyElementText(findTestObject('Object Repository/Login_Page/span_RequiredPassword'), 'Required')
+
+// Enter only username and click login
+WebUI.setText(findTestObject('Object Repository/Login_Page/input_Username'), 'Admin')
+WebUI.click(findTestObject('Object Repository/Login_Page/button_Login'))
+
+// Verify password required error message
+WebUI.verifyElementNotPresent(findTestObject('Object Repository/Login_Page/span_RequiredUsername'), 5)
+WebUI.verifyElementPresent(findTestObject('Object Repository/Login_Page/span_RequiredPassword'), 5)
+
+// Clear username field and enter only password
+WebUI.clearText(findTestObject('Object Repository/Login_Page/input_Username'))
+WebUI.setEncryptedText(findTestObject('Object Repository/Login_Page/input_Password'), 'hUKwJTbofgPU9eVlw/CnDQ==')
+WebUI.click(findTestObject('Object Repository/Login_Page/button_Login'))
+
+// Verify username required error message
+WebUI.verifyElementPresent(findTestObject('Object Repository/Login_Page/span_RequiredUsername'), 5)
+WebUI.verifyElementNotPresent(findTestObject('Object Repository/Login_Page/span_RequiredPassword'), 5)
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## 3. Object Repository Files (.rs)
+
+### Login_Page/img_Logo.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Orange HRM logo on login page</description>
+   <name>img_Logo</name>
+   <tag></tag>
+   <elementGuidId>aaa11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='orangehrm-login-branding']/img</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>img.orangehrm-login-branding-image</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//img[@alt='company-branding']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>img</value>
+      <webElementGuid>aaa11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>alt</name>
+      <type>Main</type>
+      <value>company-branding</value>
+      <webElementGuid>aaa11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/input_Username.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input field on login page</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>bbb11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='username' and @placeholder='Username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>bbb11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>username</value>
+      <webElementGuid>bbb11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Username</value>
+      <webElementGuid>bbb11111-4444-4444-4444-444444444444</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/input_Password.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field on login page</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>ccc11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='password']</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='password' and @placeholder='Password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>ccc11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>ccc11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Password</value>
+      <webElementGuid>ccc11111-4444-4444-4444-444444444444</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/button_Login.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button on login page</description>
+   <name>button_Login</name>
+   <tag></tag>
+   <elementGuidId>ddd11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.oxd-button.oxd-button--medium.oxd-button--main</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//button[@type='submit' and contains(., 'Login')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>button</value>
+      <webElementGuid>ddd11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>submit</value>
+      <webElementGuid>ddd11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/div_InvalidCredentials.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Invalid credentials error message</description>
+   <name>div_InvalidCredentials</name>
+   <tag></tag>
+   <elementGuidId>eee11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='oxd-alert-content oxd-alert-content--error']/p</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.oxd-alert-content.oxd-alert-content--error p</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//p[contains(text(),'Invalid credentials')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>p</value>
+      <webElementGuid>eee11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Invalid credentials</value>
+      <webElementGuid>eee11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/h5_LoginTitle.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login page title</description>
+   <name>h5_LoginTitle</name>
+   <tag></tag>
+   <elementGuidId>fff11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//h5[contains(@class, 'oxd-text') and contains(@class, 'oxd-text--h5')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h5.oxd-text.oxd-text--h5.orangehrm-login-title</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//h5[contains(text(),'Login')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>h5</value>
+      <webElementGuid>fff11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Login</value>
+      <webElementGuid>fff11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/span_RequiredUsername.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Required field validation message for username</description>
+   <name>span_RequiredUsername</name>
+   <tag></tag>
+   <elementGuidId>ggg11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']/../..//span[text()='Required']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.oxd-input-group:nth-of-type(1) span.oxd-input-field-error-message</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//span[contains(text(),'Required') and ancestor::div[.//input[@name='username']]]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>ggg11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Required</value>
+      <webElementGuid>ggg11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Login_Page/span_RequiredPassword.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Required field validation message for password</description>
+   <name>span_RequiredPassword</name>
+   <tag></tag>
+   <elementGuidId>hhh11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']/../..//span[text()='Required']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.oxd-input-group:nth-of-type(2) span.oxd-input-field-error-message</value>
+      </entry>
+      <entry>
+         <key>BASIC</key>
+         <value>//span[contains(text(),'Required') and ancestor::div[.//input[@name='password']]]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>BASIC</selectorMethod>
+   <useRalativeImagePath>true</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>hhh11111-2222-2222-2222-222222222222</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Required</value>
+      <webElementGuid>hhh11111-3333-3333-3333-333333333333</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Dashboard_Page/h6_Dashboard.rs
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard page header title</description>
+   <name>h6_Dashboard</name>
+   <tag></tag>
+   <elementGuidId>iii11111-1111-1111-1111-111111111111</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[contains(@class, 'oxd-text') and contains(@class, 'oxd-text--h6') and text()='Dashboard']</value>
+      </entry>
+      <entry
