@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>OrangeHRM logo on login page</description>
+   <name>img_Logo</name>
+   <tag></tag>
+   <elementGuidId>d4e5f6g7-h8i9-j0k1-l2m3-n4o5p6q7r8s9</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//img[@alt='company-branding']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//img[@alt='company-branding']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>img.oxd-brand-banner</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>img</value>
+      <webElementGuid>h8i9j0k1-l2m3-n4o5-p6q7-r8s9t0u1v2w3</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>alt</name>
+      <type>Main</type>
+      <value>company-branding</value>
+      <webElementGuid>i9j0k1l2-m3n4-o5p6-q7r8-s9t0u1v2w3x4</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
