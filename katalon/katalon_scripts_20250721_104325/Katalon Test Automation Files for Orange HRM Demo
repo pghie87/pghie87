@@ -1,0 +1,715 @@
+I'll create a complete set of Katalon test automation files for testing the Orange HRM demo site (https://opensource-demo.orangehrmlive.com/web/index.php/auth/login). This will include test case files, script files, and object repository files following Katalon best practices.
+
+## 1. Test Case File (TC_Login_OrangeHRM.tc)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Login to OrangeHRM with valid credentials</description>
+   <name>TC_Login_OrangeHRM</name>
+   <tag>login, orangehrm</tag>
+   <comment></comment>
+   <testCaseGuid>a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6</testCaseGuid>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description></description>
+      <id>f1234567-89ab-cdef-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description></description>
+      <id>a9876543-21fe-dcba-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## 2. Script File (TC_Login_OrangeHRM.groovy)
+
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * This test case verifies login functionality of OrangeHRM Demo site
+ */
+
+// Open browser and navigate to the login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_Login/img_Logo'), 10)
+
+// Verify login page elements are present
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Login/input_Username'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Login/input_Password'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Login/button_Login'), 10)
+
+// Enter username and password
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Username'), username)
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Password'), password)
+
+// Click login button
+WebUI.click(findTestObject('OrangeHRM/Page_Login/button_Login'))
+
+// Verify successful login by checking for dashboard element
+WebUI.waitForElementPresent(findTestObject('OrangeHRM/Page_Dashboard/h6_Dashboard'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_Dashboard/h6_Dashboard'), 'Dashboard')
+
+// Verify user profile menu is visible
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Common/div_UserDropdown'), 10)
+
+// Click on user dropdown
+WebUI.click(findTestObject('OrangeHRM/Page_Common/div_UserDropdown'))
+
+// Click logout
+WebUI.waitForElementClickable(findTestObject('OrangeHRM/Page_Common/a_Logout'), 5)
+WebUI.click(findTestObject('OrangeHRM/Page_Common/a_Logout'))
+
+// Verify redirected back to login page
+WebUI.waitForElementPresent(findTestObject('OrangeHRM/Page_Login/button_Login'), 10)
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## 3. Object Repository Files
+
+### 3.1 OrangeHRM/Page_Login/img_Logo.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>OrangeHRM logo on login page</description>
+   <name>img_Logo</name>
+   <tag></tag>
+   <elementGuidId>b1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>.orangehrm-login-branding img</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[contains(@class,'orangehrm-login-branding')]//img</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.2 OrangeHRM/Page_Login/input_Username.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input field on login page</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>c1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name="username"]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.3 OrangeHRM/Page_Login/input_Password.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field on login page</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>d1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name="password"]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.4 OrangeHRM/Page_Login/button_Login.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button</description>
+   <name>button_Login</name>
+   <tag></tag>
+   <elementGuidId>e1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.orangehrm-login-button</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.5 OrangeHRM/Page_Dashboard/h6_Dashboard.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard header text</description>
+   <name>h6_Dashboard</name>
+   <tag></tag>
+   <elementGuidId>f1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h6.oxd-text--h6</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[contains(@class, 'oxd-text') and text()='Dashboard']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.6 OrangeHRM/Page_Common/div_UserDropdown.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User dropdown menu in header</description>
+   <name>div_UserDropdown</name>
+   <tag></tag>
+   <elementGuidId>g1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-userdropdown-tab</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[contains(@class, 'oxd-userdropdown-tab')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.7 OrangeHRM/Page_Common/a_Logout.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Logout link in user dropdown</description>
+   <name>a_Logout</name>
+   <tag></tag>
+   <elementGuidId>h1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-userdropdown-link:last-child</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//a[contains(@class, 'oxd-userdropdown-link') and text()='Logout']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+## 4. Additional Test Case File (TC_AddEmployee_OrangeHRM.tc)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Add new employee to OrangeHRM system</description>
+   <name>TC_AddEmployee_OrangeHRM</name>
+   <tag>employee, orangehrm</tag>
+   <comment></comment>
+   <testCaseGuid>b1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6</testCaseGuid>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description></description>
+      <id>e1234567-89ab-cdef-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description></description>
+      <id>d9876543-21fe-dcba-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>password</name>
+   </variable>
+   <variable>
+      <defaultValue>'John'</defaultValue>
+      <description></description>
+      <id>c1234567-89ab-cdef-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>firstName</name>
+   </variable>
+   <variable>
+      <defaultValue>'Doe'</defaultValue>
+      <description></description>
+      <id>b1234567-89ab-cdef-0123-456789abcdef</id>
+      <masked>false</masked>
+      <name>lastName</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## 5. Script File for Add Employee (TC_AddEmployee_OrangeHRM.groovy)
+
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * This test case verifies the Add Employee functionality in OrangeHRM Demo site
+ */
+
+// Login to OrangeHRM
+WebUI.callTestCase(findTestCase('TC_Login_OrangeHRM'), [('username') : username, ('password') : password], FailureHandling.STOP_ON_FAILURE)
+
+// Navigate to PIM module
+WebUI.click(findTestObject('OrangeHRM/Page_Dashboard/a_PIM'))
+WebUI.waitForPageLoad(10)
+
+// Click Add Employee button
+WebUI.waitForElementClickable(findTestObject('OrangeHRM/Page_PIM/button_Add'), 10)
+WebUI.click(findTestObject('OrangeHRM/Page_PIM/button_Add'))
+WebUI.waitForPageLoad(10)
+
+// Fill employee details
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_FirstName'), 10)
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_FirstName'), firstName)
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_LastName'), lastName)
+
+// Get the employee ID for verification later
+String employeeId = WebUI.getAttribute(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_EmployeeId'), 'value')
+println("Employee ID: " + employeeId)
+
+// Toggle Create Login Details
+WebUI.click(findTestObject('OrangeHRM/Page_PIM_AddEmployee/span_CreateLoginDetails'))
+
+// Set login details
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_Username'), firstName.toLowerCase() + "." + lastName.toLowerCase())
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_Password'), 'Password123')
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM_AddEmployee/input_ConfirmPassword'), 'Password123')
+
+// Enable account
+WebUI.click(findTestObject('OrangeHRM/Page_PIM_AddEmployee/span_EnabledStatus'))
+
+// Save employee
+WebUI.click(findTestObject('OrangeHRM/Page_PIM_AddEmployee/button_Save'))
+
+// Wait for employee personal details page to load
+WebUI.waitForElementPresent(findTestObject('OrangeHRM/Page_PIM_PersonalDetails/h6_PersonalDetails'), 10)
+
+// Verify employee was successfully added by checking the URL contains 'viewPersonalDetails'
+WebUI.verifyMatch(WebUI.getUrl(), '.*viewPersonalDetails.*', true)
+
+// Navigate back to employee list
+WebUI.click(findTestObject('OrangeHRM/Page_Common/a_EmployeeList'))
+WebUI.waitForPageLoad(10)
+
+// Search for the added employee
+WebUI.setText(findTestObject('OrangeHRM/Page_PIM/input_EmployeeId'), employeeId)
+WebUI.click(findTestObject('OrangeHRM/Page_PIM/button_Search'))
+
+// Wait for search results
+WebUI.delay(2)
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_PIM/div_SearchResults'), 10)
+
+// Verify employee is in search results
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_PIM/div_EmployeeFirstName'), firstName)
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_PIM/div_EmployeeLastName'), lastName)
+
+// Logout
+WebUI.click(findTestObject('OrangeHRM/Page_Common/div_UserDropdown'))
+WebUI.waitForElementClickable(findTestObject('OrangeHRM/Page_Common/a_Logout'), 5)
+WebUI.click(findTestObject('OrangeHRM/Page_Common/a_Logout'))
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## 6. Additional Object Repository Files for PIM Module
+
+### 6.1 OrangeHRM/Page_Dashboard/a_PIM.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>PIM module link in the side menu</description>
+   <name>a_PIM</name>
+   <tag></tag>
+   <elementGuidId>i1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-main-menu-item span:contains('PIM')</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[text()='PIM']/parent::a</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.2 OrangeHRM/Page_PIM/button_Add.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Add button in PIM module</description>
+   <name>button_Add</name>
+   <tag></tag>
+   <elementGuidId>j1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.oxd-button--secondary:contains('Add')</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[contains(@class, 'oxd-button--secondary') and contains(., 'Add')]</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.3 OrangeHRM/Page_PIM_AddEmployee/input_FirstName.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>First name input field on Add Employee page</description>
+   <name>input_FirstName</name>
+   <tag></tag>
+   <elementGuidId>k1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name="firstName"]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='firstName']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.4 OrangeHRM/Page_PIM_AddEmployee/input_LastName.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Last name input field on Add Employee page</description>
+   <name>input_LastName</name>
+   <tag></tag>
+   <elementGuidId>l1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name="lastName"]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='lastName']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.5 OrangeHRM/Page_PIM_AddEmployee/input_EmployeeId.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Employee ID field on Add Employee page</description>
+   <name>input_EmployeeId</name>
+   <tag></tag>
+   <elementGuidId>m1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.orangehrm-employee-container .oxd-grid-2 .oxd-input</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Employee Id')]/parent::div/following-sibling::div/input</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.6 OrangeHRM/Page_PIM_AddEmployee/span_CreateLoginDetails.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Toggle for Create Login Details section</description>
+   <name>span_CreateLoginDetails</name>
+   <tag></tag>
+   <elementGuidId>n1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-switch-input</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Create Login Details')]/parent::div/following-sibling::div//span</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.7 OrangeHRM/Page_PIM_AddEmployee/input_Username.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username field in Create Login Details section</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>o1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.orangehrm-employee-form div.oxd-form-row:last-child input</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Username')]/parent::div/following-sibling::div//input</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.8 OrangeHRM/Page_PIM_AddEmployee/input_Password.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password field in Create Login Details section</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>p1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.user-password-cell input:first-of-type</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Password')]/parent::div/following-sibling::div//input</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.9 OrangeHRM/Page_PIM_AddEmployee/input_ConfirmPassword.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Confirm Password field in Create Login Details section</description>
+   <name>input_ConfirmPassword</name>
+   <tag></tag>
+   <elementGuidId>q1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.user-password-row:last-child input</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Confirm Password')]/parent::div/following-sibling::div//input</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.10 OrangeHRM/Page_PIM_AddEmployee/span_EnabledStatus.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Enabled status radio button</description>
+   <name>span_EnabledStatus</name>
+   <tag></tag>
+   <elementGuidId>r1234567-89ab-cdef-1234-567890abcdef</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>label:contains('Enabled') span.oxd-radio-input</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//label[contains(text(), 'Enabled')]/span</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 6.11 OrangeHRM/Page_PIM_AddEmployee/button_Save.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Save button on Add Employee page</description>
