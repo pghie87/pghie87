@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Login to Orange HRM demo site with valid credentials</description>
+   <name>Login_TC</name>
+   <tag>login, authentication, smoke</tag>
+   <comment></comment>
+   <testCaseGuid>a8f4e496-b8c2-4567-9d45-123f4de5678a</testCaseGuid>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>cba34d56-789c-4123-ab45-6789e0f12345</variableId>
+   </variableLinks>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>cba34d56-789c-4123-ab45-6789e0f12345</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>12345abc-def6-7890-1234-5678901fghij</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
