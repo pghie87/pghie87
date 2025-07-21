@@ -1,0 +1,887 @@
+// FILE: src/services/ProductCatalogIntegrationService.js
+/**
+ * Service for handling product catalog integration with the shopping cart
+ */
+class ProductCatalogIntegrationService {
+  /**
+   * Constructor
+   * @param {ProductCatalogApiClient} apiClient - Product catalog API client
+   * @param {ProductCacheService} cacheService - Product cache service
+   * @param {EventBus} eventBus - Event bus for publishing/subscribing to events
+   * @param {Logger} logger - Logging service
+   */
+  constructor(apiClient, cacheService, eventBus, logger) {
+    this.apiClient = apiClient;
+    this.cacheService = cacheService;
+    this.eventBus = eventBus;
+    this.logger = logger;
+    this.productUpdateSubscriptions = new Map();
+    
+    // Listen for product update events
+    this.eventBus.subscribe('product:updated', this.handleProductUpdate);
+  }
+  
+  /**
+   * Fetch product details by ID with optional attribute selections
+   * @param {string} productId - The unique identifier for the product
+   * @param {Object} [attributes] - Optional product attribute selections (color, size, etc.)
+   * @returns {Promise<ProductData>} Complete product information
+   * @throws {ProductNotFoundException} If product doesn't exist
+   */
+  async getProductDetails(productId, attributes = {}) {
+    try {
+      const product = await this.cacheService.getProduct(productId);
+      
+      // Apply attribute selections to get specific variant data if needed
+      if (Object.keys(attributes).length > 0 && product.variants) {
+        const variant = this.findVariantByAttributes(product, attributes);
+        if (variant) {
+          return { ...product, ...variant, selectedAttributes: attributes };
+        }
+      }
+      
+      return product;
+    } catch (error) {
+      this.logger.error(`Failed to get product details for ${productId}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find product variant based on attribute selections
+   * @private
+   * @param {ProductData} product - Product data
+   * @param {Object} attributes - Attribute selections
+   * @returns {Object|null} Matching variant or null
+   */
+  findVariantByAttributes(product, attributes) {
+    if (!product.variants || product.variants.length === 0) {
+      return null;
+    }
+    
+    return product.variants.find(variant => {
+      return Object.entries(attributes).every(
+        ([key, value]) => variant.attributes && variant.attributes[key] === value
+      );
+    }) || null;
+  }
+
+  /**
+   * Verify product availability and current price
+   * @param {string} productId - The unique identifier for the product
+   * @param {Object} [attributes] - Optional product attribute selections
+   * @param {number} quantity - Quantity to check
+   * @returns {Promise<ProductAvailabilityInfo>} Availability status and current price
+   */
+  async checkProductAvailability(productId, attributes = {}, quantity = 1) {
+    try {
+      const inventory = await this.apiClient.checkInventory(productId, attributes, quantity);
+      const priceInfo = await this.apiClient.getProductPrice(productId, attributes);
+      
+      return {
+        productId,
+        attributes,
+        isAvailable: inventory.inStock && inventory.availableQuantity >= quantity,
+        availableQuantity: inventory.availableQuantity,
+        price: priceInfo.currentPrice,
+        originalPrice: priceInfo.originalPrice,
+        currency: priceInfo.currency,
+        hasChanged: priceInfo.hasChanged || false,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check product availability for ${productId}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate product data for all items in the cart
+   * @param {Array<CartItem>} cartItems - Array of items in the cart
+   * @returns {Promise<CartValidationResult>} Validation results with any updates needed
+   */
+  async validateCartProducts(cartItems) {
+    try {
+      const productIds = cartItems.map(item => item.productId);
+      const productsData = await this.cacheService.getBulkProducts(productIds);
+      
+      const validationResults = await Promise.all(
+        cartItems.map(async item => {
+          try {
+            const availability = await this.checkProductAvailability(
+              item.productId,
+              item.attributes,
+              item.quantity
+            );
+            
+            const productData = productsData.get(item.productId);
+            
+            return {
+              cartItemId: item.id,
+              productId: item.productId,
+              isValid: availability.isAvailable,
+              availableQuantity: availability.availableQuantity,
+              currentPrice: availability.price,
+              priceChanged: item.unitPrice !== availability.price,
+              productExists: !!productData,
+              productData: productData || null,
+              messages: this.generateValidationMessages(item, availability, productData)
+            };
+          } catch (error) {
+            return {
+              cartItemId: item.id,
+              productId: item.productId,
+              isValid: false,
+              availableQuantity: 0,
+              currentPrice: item.unitPrice,
+              priceChanged: false,
+              productExists: false,
+              productData: null,
+              messages: [{
+                type: 'error',
+                code: 'PRODUCT_VALIDATION_ERROR',
+                message: 'Unable to validate product. It may have been removed.'
+              }]
+            };
+          }
+        })
+      );
+      
+      return {
+        isValid: validationResults.every(result => result.isValid && result.productExists),
+        items: validationResults,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logger.error('Failed to validate cart products', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Generate validation messages based on validation results
+   * @private
+   * @param {CartItem} item - Cart item
+   * @param {ProductAvailabilityInfo} availability - Availability info
+   * @param {ProductData|null} productData - Product data
+   * @returns {Array<ValidationMessage>} Validation messages
+   */
+  generateValidationMessages(item, availability, productData) {
+    const messages = [];
+    
+    if (!productData) {
+      messages.push({
+        type: 'error',
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'This product is no longer available and has been removed from the catalog.'
+      });
+      return messages;
+    }
+    
+    if (!availability.isAvailable) {
+      if (availability.availableQuantity === 0) {
+        messages.push({
+          type: 'error',
+          code: 'PRODUCT_OUT_OF_STOCK',
+          message: 'This product is currently out of stock.'
+        });
+      } else if (availability.availableQuantity < item.quantity) {
+        messages.push({
+          type: 'warning',
+          code: 'INSUFFICIENT_QUANTITY',
+          message: `Only ${availability.availableQuantity} units available. Please adjust quantity.`
+        });
+      }
+    }
+    
+    if (item.unitPrice !== availability.price) {
+      const priceChange = availability.price - item.unitPrice;
+      const changeType = priceChange > 0 ? 'increased' : 'decreased';
+      const absChange = Math.abs(priceChange).toFixed(2);
+      
+      messages.push({
+        type: 'info',
+        code: 'PRICE_CHANGED',
+        message: `Price has ${changeType} by $${absChange} since you added this item.`
+      });
+    }
+    
+    return messages;
+  }
+  
+  /**
+   * Fetch recently viewed products for current user/session
+   * @param {string} userId - User ID or session ID
+   * @param {number} [limit=5] - Maximum number of items to return
+   * @returns {Promise<Array<ProductData>>} Array of recently viewed products
+   */
+  async getRecentlyViewedProducts(userId, limit = 5) {
+    try {
+      // Get recently viewed product IDs from user data
+      const recentlyViewedIds = await this.apiClient.fetchRecentlyViewedProducts(userId, limit);
+      
+      // Get product details for each ID
+      const productPromises = recentlyViewedIds.map(id => this.getProductDetails(id).catch(err => null));
+      const products = await Promise.all(productPromises);
+      
+      // Filter out null results (from failed fetches)
+      return products.filter(product => product !== null);
+    } catch (error) {
+      this.logger.error(`Failed to get recently viewed products for ${userId}`, error);
+      return []; // Return empty array instead of failing
+    }
+  }
+  
+  /**
+   * Record a product view for the current user/session
+   * @param {string} userId - User ID or session ID
+   * @param {string} productId - The unique identifier for the viewed product
+   * @returns {Promise<void>}
+   */
+  async recordProductView(userId, productId) {
+    try {
+      await this.apiClient.recordProductView(userId, productId);
+      
+      // Also publish an event for analytics
+      this.eventBus.publish('analytics:product:viewed', {
+        userId,
+        productId,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      this.logger.error(`Failed to record product view for ${productId}`, error);
+      // Don't throw - this is a non-critical operation
+    }
+  }
+  
+  /**
+   * Subscribe to product updates for items in the cart
+   * @param {Array<string>} productIds - Product IDs to monitor
+   * @param {Function} callback - Callback function for updates
+   * @returns {Subscription} Subscription object to unsubscribe
+   */
+  subscribeToProductUpdates(productIds, callback) {
+    const subscription = this.apiClient.subscribeToProductEvents(productIds);
+    
+    const handler = (event) => {
+      const { productId, updateType, newData } = event;
+      
+      // Update cache if there's new data
+      if (newData) {
+        this.cacheService.cacheProduct(productId, newData).catch(err => {
+          this.logger.error(`Failed to update cache for product ${productId}`, err);
+        });
+      }
+      
+      // Call the provided callback
+      callback(event);
+    };
+    
+    subscription.onMessage(handler);
+    
+    this.productUpdateSubscriptions.set(callback, subscription);
+    
+    return {
+      unsubscribe: () => {
+        const sub = this.productUpdateSubscriptions.get(callback);
+        if (sub) {
+          sub.close();
+          this.productUpdateSubscriptions.delete(callback);
+        }
+      }
+    };
+  }
+  
+  /**
+   * Handle product update events
+   * @private
+   * @param {Object} event - Product update event
+   */
+  handleProductUpdate = (event) => {
+    const { productId, updateType, newData } = event;
+    
+    // Invalidate cache for updated product
+    if (updateType === 'update' || updateType === 'delete') {
+      this.cacheService.invalidateProduct(productId).catch(err => {
+        this.logger.error(`Failed to invalidate cache for product ${productId}`, err);
+      });
+    }
+    
+    // Re-cache updated product data if available
+    if (updateType === 'update' && newData) {
+      this.cacheService.cacheProduct(productId, newData).catch(err => {
+        this.logger.error(`Failed to update cache for product ${productId}`, err);
+      });
+    }
+  }
+}
+
+export default ProductCatalogIntegrationService;
+
+// FILE: src/services/ProductCacheService.js
+/**
+ * Service for caching product data
+ */
+class ProductCacheService {
+  /**
+   * Constructor
+   * @param {ProductCatalogApiClient} apiClient - Product catalog API client
+   * @param {CacheProvider} cacheProvider - Cache provider implementation
+   * @param {Logger} logger - Logging service
+   * @param {Object} options - Cache configuration options
+   */
+  constructor(apiClient, cacheProvider, logger, options = {}) {
+    this.apiClient = apiClient;
+    this.cache = cacheProvider;
+    this.logger = logger;
+    this.options = {
+      ttl: 3600, // Default TTL: 1 hour
+      prefix: 'product:',
+      ...options
+    };
+  }
+  
+  /**
+   * Get product from cache or fetch from source if not available
+   * @param {string} productId - The unique identifier for the product
+   * @param {Object} [options] - Cache options
+   * @param {boolean} [options.forceRefresh=false] - Force refresh from source
+   * @returns {Promise<ProductData>} Product data
+   */
+  async getProduct(productId, options = {}) {
+    const { forceRefresh = false } = options;
+    const cacheKey = `${this.options.prefix}${productId}`;
+    
+    try {
+      // Try to get from cache first unless force refresh is requested
+      if (!forceRefresh) {
+        const cachedProduct = await this.cache.get(cacheKey);
+        if (cachedProduct) {
+          return cachedProduct;
+        }
+      }
+      
+      // Not in cache or force refresh requested, fetch from API
+      const product = await this.apiClient.fetchProduct(productId);
+      
+      // Store in cache
+      await this.cacheProduct(productId, product);
+      
+      return product;
+    } catch (error) {
+      this.logger.error(`Cache miss/error for product ${productId}`, error);
+      
+      // If it was a cache error but we can still try the API, do so
+      if (error.name === 'CacheError') {
+        try {
+          return await this.apiClient.fetchProduct(productId);
+        } catch (apiError) {
+          throw apiError;
+        }
+      }
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Store product data in cache
+   * @param {string} productId - The unique identifier for the product
+   * @param {ProductData} productData - Product data to cache
+   * @param {number} [ttl] - Time to live in seconds
+   * @returns {Promise<void>}
+   */
+  async cacheProduct(productId, productData, ttl = this.options.ttl) {
+    const cacheKey = `${this.options.prefix}${productId}`;
+    
+    try {
+      await this.cache.set(cacheKey, productData, ttl);
+    } catch (error) {
+      this.logger.error(`Failed to cache product ${productId}`, error);
+      // Don't throw the error, as caching failures shouldn't break the application
+    }
+  }
+  
+  /**
+   * Invalidate product in cache
+   * @param {string} productId - The unique identifier for the product
+   * @returns {Promise<void>}
+   */
+  async invalidateProduct(productId) {
+    const cacheKey = `${this.options.prefix}${productId}`;
+    
+    try {
+      await this.cache.delete(cacheKey);
+    } catch (error) {
+      this.logger.error(`Failed to invalidate cache for product ${productId}`, error);
+      // Don't throw the error, as cache invalidation failures shouldn't break the app
+    }
+  }
+  
+  /**
+   * Bulk fetch products from cache with fallback to source
+   * @param {Array<string>} productIds - Array of product IDs
+   * @returns {Promise<Map<string, ProductData>>} Map of product IDs to product data
+   */
+  async getBulkProducts(productIds) {
+    // Create a Set to remove duplicates
+    const uniqueIds = [...new Set(productIds)];
+    
+    try {
+      // Try to get products from cache first
+      const cacheKeys = uniqueIds.map(id => `${this.options.prefix}${id}`);
+      const cachedProducts = await this.cache.mget(cacheKeys);
+      
+      // Identify which products we need to fetch from API
+      const missingProductIds = [];
+      uniqueIds.forEach((id, index) => {
+        if (!cachedProducts[index]) {
+          missingProductIds.push(id);
+        }
+      });
+      
+      // If we have missing products, fetch them from API
+      let fetchedProducts = {};
+      if (missingProductIds.length > 0) {
+        fetchedProducts = await this.apiClient.fetchMultipleProducts(missingProductIds);
+        
+        // Cache the fetched products
+        await Promise.all(
+          Object.entries(fetchedProducts).map(([id, data]) => 
+            this.cacheProduct(id, data)
+          )
+        );
+      }
+      
+      // Combine cached and fetched products
+      const result = new Map();
+      uniqueIds.forEach((id, index) => {
+        if (cachedProducts[index]) {
+          result.set(id, cachedProducts[index]);
+        } else if (fetchedProducts[id]) {
+          result.set(id, fetchedProducts[id]);
+        }
+      });
+      
+      return result;
+    } catch (error) {
+      this.logger.error('Error in bulk product fetch', error);
+      
+      // If it was a cache error, try to fetch all products from API
+      if (error.name === 'CacheError') {
+        try {
+          const products = await this.apiClient.fetchMultipleProducts(uniqueIds);
+          return new Map(Object.entries(products));
+        } catch (apiError) {
+          throw apiError;
+        }
+      }
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Clear entire product cache
+   * @returns {Promise<void>}
+   */
+  async clearCache() {
+    try {
+      const pattern = `${this.options.prefix}*`;
+      await this.cache.deletePattern(pattern);
+    } catch (error) {
+      this.logger.error('Failed to clear product cache', error);
+      throw error;
+    }
+  }
+}
+
+export default ProductCacheService;
+
+// FILE: src/api/ProductCatalogApiClient.js
+/**
+ * Client for interacting with the external product catalog API
+ */
+class ProductCatalogApiClient {
+  /**
+   * Constructor
+   * @param {Object} config - API configuration
+   * @param {string} config.baseUrl - Base URL for the product catalog API
+   * @param {Object} config.headers - Default headers for API requests
+   * @param {number} config.timeout - Request timeout in milliseconds
+   * @param {HttpClient} httpClient - HTTP client for making API requests
+   * @param {Logger} logger - Logger for API client operations
+   */
+  constructor(config, httpClient, logger) {
+    this.config = {
+      baseUrl: 'https://api.example.com/product-catalog',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 5000,
+      ...config
+    };
+    
+    this.http = httpClient;
+    this.logger = logger;
+  }
+  
+  /**
+   * Fetch a product by ID from the product catalog
+   * @param {string} productId - The unique identifier for the product
+   * @returns {Promise<ProductData>} Complete product information
+   * @throws {ApiError} If API request fails
+   */
+  async fetchProduct(productId) {
+    try {
+      const response = await this.http.get(
+        `${this.config.baseUrl}/products/${encodeURIComponent(productId)}`,
+        {
+          headers: this.config.headers,
+          timeout: this.config.timeout
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      this.logger.error(`API error fetching product ${productId}`, error);
+      
+      if (error.response && error.response.status === 404) {
+        const notFoundError = new Error(`Product not found: ${productId}`);
+        notFoundError.name = 'ProductNotFoundException';
+        notFoundError.status = 404;
+        throw notFoundError;
+      }
+      
+      const apiError = new Error(`Failed to fetch product: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Fetch multiple products by IDs
+   * @param {Array<string>} productIds - Array of product IDs
+   * @returns {Promise<Map<string, ProductData>>} Map of product IDs to product data
+   * @throws {ApiError} If API request fails
+   */
+  async fetchMultipleProducts(productIds) {
+    if (!productIds || productIds.length === 0) {
+      return {};
+    }
+    
+    try {
+      const response = await this.http.post(
+        `${this.config.baseUrl}/products/bulk`,
+        { productIds },
+        {
+          headers: this.config.headers,
+          timeout: this.config.timeout * 2 // Double timeout for bulk requests
+        }
+      );
+      
+      return response.data.products;
+    } catch (error) {
+      this.logger.error('API error fetching multiple products', error);
+      
+      const apiError = new Error(`Failed to fetch multiple products: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Check inventory status for a product
+   * @param {string} productId - The unique identifier for the product
+   * @param {Object} [attributes] - Optional product attribute selections
+   * @param {number} quantity - Quantity to check
+   * @returns {Promise<InventoryStatus>} Current inventory status
+   * @throws {ApiError} If API request fails
+   */
+  async checkInventory(productId, attributes = {}, quantity = 1) {
+    try {
+      const response = await this.http.post(
+        `${this.config.baseUrl}/inventory/check`,
+        {
+          productId,
+          attributes,
+          quantity
+        },
+        {
+          headers: this.config.headers,
+          timeout: this.config.timeout
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      this.logger.error(`API error checking inventory for product ${productId}`, error);
+      
+      const apiError = new Error(`Failed to check inventory: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Fetch product price information
+   * @param {string} productId - The unique identifier for the product
+   * @param {Object} [attributes] - Optional product attribute selections
+   * @param {string} [currencyCode] - Currency code for pricing
+   * @returns {Promise<PriceInfo>} Current price information
+   * @throws {ApiError} If API request fails
+   */
+  async getProductPrice(productId, attributes = {}, currencyCode = 'USD') {
+    try {
+      const response = await this.http.post(
+        `${this.config.baseUrl}/products/price`,
+        {
+          productId,
+          attributes,
+          currencyCode
+        },
+        {
+          headers: this.config.headers,
+          timeout: this.config.timeout
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      this.logger.error(`API error fetching price for product ${productId}`, error);
+      
+      const apiError = new Error(`Failed to fetch product price: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Fetch recently viewed products for a user
+   * @param {string} userId - User ID or session ID
+   * @param {number} limit - Maximum number of products to return
+   * @returns {Promise<Array<string>>} Array of product IDs
+   * @throws {ApiError} If API request fails
+   */
+  async fetchRecentlyViewedProducts(userId, limit) {
+    try {
+      const response = await this.http.get(
+        `${this.config.baseUrl}/users/${encodeURIComponent(userId)}/recently-viewed`,
+        {
+          params: { limit },
+          headers: this.config.headers,
+          timeout: this.config.timeout
+        }
+      );
+      
+      return response.data.productIds || [];
+    } catch (error) {
+      this.logger.error(`API error fetching recently viewed products for user ${userId}`, error);
+      
+      const apiError = new Error(`Failed to fetch recently viewed products: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Record a product view for a user
+   * @param {string} userId - User ID or session ID
+   * @param {string} productId - Product ID that was viewed
+   * @returns {Promise<void>}
+   * @throws {ApiError} If API request fails
+   */
+  async recordProductView(userId, productId) {
+    try {
+      await this.http.post(
+        `${this.config.baseUrl}/users/${encodeURIComponent(userId)}/product-view`,
+        { productId },
+        {
+          headers: this.config.headers,
+          timeout: this.config.timeout
+        }
+      );
+    } catch (error) {
+      this.logger.error(`API error recording product view for user ${userId}, product ${productId}`, error);
+      
+      const apiError = new Error(`Failed to record product view: ${error.message}`);
+      apiError.name = 'ApiError';
+      apiError.status = error.response ? error.response.status : 500;
+      apiError.originalError = error;
+      throw apiError;
+    }
+  }
+  
+  /**
+   * Subscribe to product update events
+   * @param {Array<string>} productIds - Product IDs to monitor
+   * @returns {WebSocket} WebSocket connection for product updates
+   */
+  subscribeToProductEvents(productIds) {
+    try {
+      const wsUrl = this.config.baseUrl.replace('http', 'ws') + '/events/products';
+      const queryParams = new URLSearchParams({ products: productIds.join(',') }).toString();
+      const wsConnection = new WebSocket(`${wsUrl}?${queryParams}`);
+      
+      wsConnection.addEventListener('open', () => {
+        this.logger.info(`WebSocket connection established for products: ${productIds.join(', ')}`);
+      });
+      
+      wsConnection.addEventListener('error', (error) => {
+        this.logger.error('WebSocket connection error', error);
+      });
+      
+      return {
+        onMessage: (callback) => {
+          wsConnection.addEventListener('message', (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              callback(data);
+            } catch (error) {
+              this.logger.error('Error parsing WebSocket message', error);
+            }
+          });
+        },
+        close: () => {
+          wsConnection.close();
+        }
+      };
+    } catch (error) {
+      this.logger.error('Failed to create WebSocket connection', error);
+      throw new Error(`Failed to subscribe to product events: ${error.message}`);
+    }
+  }
+}
+
+export default ProductCatalogApiClient;
+
+// FILE: src/components/CartItemComponent.jsx
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import ProductDisplayComponent from './ProductDisplayComponent';
+
+/**
+ * Cart item component for displaying products in the cart
+ * @param {Object} props - Component props
+ * @param {CartItem} props.item - Cart item data
+ * @param {Function} props.onUpdateQuantity - Handler for quantity updates
+ * @param {Function} props.onRemove - Handler for item removal
+ * @param {Function} props.onSaveForLater - Handler for save for later
+ * @param {Function} props.onMoveToWishlist - Handler for move to wishlist
+ * @returns {JSX.Element} Cart item component
+ */
+const CartItemComponent = ({ 
+  item, 
+  onUpdateQuantity, 
+  onRemove, 
+  onSaveForLater, 
+  onMoveToWishlist
+}) => {
+  const [quantity, setQuantity] = useState(item.quantity);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [validationMessages, setValidationMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Handle quantity change locally before propagating to parent
+  const handleQuantityChange = (event) => {
+    const newQuantity = parseInt(event.target.value, 10);
+    if (isNaN(newQuantity) || newQuantity < 1) return;
+    
+    setQuantity(newQuantity);
+  };
+  
+  // When user clicks update quantity button
+  const handleQuantityUpdate = () => {
+    if (quantity !== item.quantity) {
+      setIsLoading(true);
+      onUpdateQuantity(item.id, quantity)
+        .finally(() => setIsLoading(false));
+    }
+  };
+  
+  // Handle remove button click with confirmation
+  const handleRemove = () => {
+    if (window.confirm('Are you sure you want to remove this item from your cart?')) {
+      onRemove(item.id);
+    }
+  };
+  
+  // Update validation messages when item changes
+  useEffect(() => {
+    setValidationMessages(item.validationMessages || []);
+  }, [item.validationMessages]);
+  
+  // Reset quantity if item quantity changes externally
+  useEffect(() => {
+    setQuantity(item.quantity);
+  }, [item.quantity]);
+  
+  // Generate class names based on validation status
+  const getItemClassName = () => {
+    const classes = ['cart-item'];
+    
+    if (item.priceChanged) {
+      classes.push('price-changed');
+    }
+    
+    if (!item.isAvailable) {
+      classes.push('unavailable');
+    }
+    
+    return classes.join(' ');
+  };
+  
+  // Render validation messages
+  const renderValidationMessages = () => {
+    if (!validationMessages || validationMessages.length === 0) return null;
+    
+    return (
+      <div className="cart-item-messages">
+        {validationMessages.map((message, index) => (
+          <div key={index} className={`message message-${message.type}`}>
+            <span className="message-icon">{getMessageIcon(message.type)}</span>
+            <span className="message-text">{message.message}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
+  // Get icon for message type
+  const getMessageIcon = (type) => {
+    switch (type) {
+      case 'error': return '⚠️';
+      case 'warning': return '⚠';
+      case 'info': return 'ℹ️';
+      default: return '';
+    }
+  };
+  
+  return (
+    <div className={getItemClassName()} data-testid={`cart-item-${item.id}`}>
+      <div className="cart-item-main">
+        <div className="cart-item-image">
+          <ProductDisplayComponent 
+            productId={item.productId} 
+            attributes={item.attributes} 
+            showDetailedInfo={false}
+          />
+        </div>
+        
+        <div className="cart-item-details">
+          <h3 className="cart-item-name">
+            {item.productData?.name || 'Product'}
+            <button 
+              className="toggle-details-button"
+              onClick={() => setIsExpanded(!isExpanded)}
