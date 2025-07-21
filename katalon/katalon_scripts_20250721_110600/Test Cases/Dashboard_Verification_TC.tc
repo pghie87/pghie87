@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Verify dashboard elements after login</description>
+   <name>Dashboard_Verification_TC</name>
+   <tag>dashboard, verification, smoke</tag>
+   <comment></comment>
+   <testCaseGuid>bcd56789-ef01-2345-6789-abcdef012345</testCaseGuid>
+</TestCaseEntity>
