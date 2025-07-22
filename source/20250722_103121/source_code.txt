@@ -1,0 +1,1039 @@
+// FOLDER: src/components
+// FILE: TemplateRepository.js
+import React, { useState, useEffect } from 'react';
+import TemplateList from './TemplateList';
+import TemplateSearchFilter from './TemplateSearchFilter';
+import { useTemplateContext } from '../contexts/TemplateContext';
+import { toast } from 'react-toastify';
+import LoadingSpinner from './common/LoadingSpinner';
+
+/**
+ * TemplateRepository component responsible for displaying and managing templates
+ * This component serves as the main interface for users to browse, search, and access templates
+ */
+const TemplateRepository = () => {
+  const { 
+    templates, 
+    isLoading, 
+    error, 
+    fetchTemplates, 
+    deleteTemplate 
+  } = useTemplateContext();
+  
+  const [filters, setFilters] = useState({
+    name: '',
+    status: 'all',
+    createdBy: '',
+    dateFrom: null,
+    dateTo: null,
+    sortBy: 'modifiedAt',
+    sortDirection: 'desc'
+  });
+  
+  useEffect(() => {
+    // Load templates when component mounts or filters change
+    fetchTemplates(filters).catch(err => {
+      console.error('Failed to fetch templates:', err);
+      toast.error('Failed to load templates. Please try again later.');
+    });
+  }, [filters, fetchTemplates]);
+  
+  const handleFilterChange = (newFilters) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+  
+  const handleDeleteTemplate = async (id) => {
+    try {
+      await deleteTemplate(id);
+      toast.success('Template deleted successfully');
+    } catch (err) {
+      console.error('Failed to delete template:', err);
+      toast.error('Failed to delete template. Please try again later.');
+    }
+  };
+  
+  if (error) {
+    return (
+      <div className="error-container">
+        <h3>Error Loading Templates</h3>
+        <p>{error.message || 'An unknown error occurred'}</p>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => fetchTemplates(filters)}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="template-repository-container">
+      <header className="repository-header">
+        <h2>Template Repository</h2>
+        <div className="action-buttons">
+          <button className="btn btn-primary">Create New Template</button>
+          <button className="btn btn-secondary">Import Template</button>
+        </div>
+      </header>
+      
+      <TemplateSearchFilter 
+        filters={filters} 
+        onFilterChange={handleFilterChange} 
+      />
+      
+      {isLoading ? (
+        <LoadingSpinner message="Loading templates..." />
+      ) : (
+        <TemplateList 
+          templates={templates} 
+          onDelete={handleDeleteTemplate}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TemplateRepository;
+
+// FILE: TemplateList.js
+import React from 'react';
+import TemplateCard from './TemplateCard';
+import PropTypes from 'prop-types';
+
+/**
+ * TemplateList component for displaying a list of templates
+ * Renders templates in a grid or list view with pagination
+ */
+const TemplateList = ({ templates, onDelete }) => {
+  if (!templates || templates.length === 0) {
+    return (
+      <div className="empty-state">
+        <h3>No templates found</h3>
+        <p>Create a new template or import an existing one to get started.</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="template-list">
+      <div className="template-count">
+        <span>{templates.length} template{templates.length !== 1 ? 's' : ''} found</span>
+      </div>
+      
+      <div className="template-grid">
+        {templates.map(template => (
+          <TemplateCard 
+            key={template.id} 
+            template={template} 
+            onDelete={onDelete} 
+          />
+        ))}
+      </div>
+      
+      <div className="pagination-controls">
+        {/* Pagination controls would go here */}
+      </div>
+    </div>
+  );
+};
+
+TemplateList.propTypes = {
+  templates: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+      description: PropTypes.string,
+      version: PropTypes.number.isRequired,
+      status: PropTypes.string.isRequired,
+      createdBy: PropTypes.string.isRequired,
+      createdAt: PropTypes.instanceOf(Date).isRequired,
+      modifiedAt: PropTypes.instanceOf(Date).isRequired,
+      previewUrl: PropTypes.string
+    })
+  ).isRequired,
+  onDelete: PropTypes.func.isRequired
+};
+
+export default TemplateList;
+
+// FILE: TemplateCard.js
+import React from 'react';
+import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+
+/**
+ * TemplateCard component for displaying an individual template
+ * Shows preview, metadata, and actions for a template
+ */
+const TemplateCard = ({ template, onDelete }) => {
+  const handleDelete = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (window.confirm(`Are you sure you want to delete template "${template.name}"?`)) {
+      onDelete(template.id);
+    }
+  };
+  
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'active': return 'badge-success';
+      case 'draft': return 'badge-warning';
+      case 'inactive': return 'badge-secondary';
+      case 'deprecated': return 'badge-danger';
+      default: return 'badge-info';
+    }
+  };
+  
+  return (
+    <div className="template-card">
+      <div className="template-preview">
+        <img 
+          src={template.previewUrl || '/default-template-preview.png'} 
+          alt={`Preview of ${template.name}`} 
+        />
+        <span className={`status-badge ${getStatusBadgeClass(template.status)}`}>
+          {template.status}
+        </span>
+      </div>
+      
+      <div className="template-details">
+        <h3>{template.name}</h3>
+        <p className="template-description">{template.description}</p>
+        
+        <div className="template-metadata">
+          <span className="version">v{template.version}</span>
+          <span className="modified-date">
+            Updated {formatDistanceToNow(new Date(template.modifiedAt))} ago
+          </span>
+          <span className="created-by">by {template.createdBy}</span>
+        </div>
+      </div>
+      
+      <div className="template-actions">
+        <Link to={`/templates/edit/${template.id}`} className="btn btn-sm btn-primary">
+          Edit
+        </Link>
+        <Link to={`/templates/view/${template.id}`} className="btn btn-sm btn-secondary">
+          View
+        </Link>
+        <button onClick={handleDelete} className="btn btn-sm btn-danger">
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+};
+
+TemplateCard.propTypes = {
+  template: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    version: PropTypes.number.isRequired,
+    status: PropTypes.string.isRequired,
+    createdBy: PropTypes.string.isRequired,
+    createdAt: PropTypes.instanceOf(Date).isRequired,
+    modifiedBy: PropTypes.string,
+    modifiedAt: PropTypes.instanceOf(Date).isRequired,
+    previewUrl: PropTypes.string
+  }).isRequired,
+  onDelete: PropTypes.func.isRequired
+};
+
+export default TemplateCard;
+
+// FILE: TemplateSearchFilter.js
+import React from 'react';
+import PropTypes from 'prop-types';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+
+/**
+ * TemplateSearchFilter component for filtering template list
+ * Provides various filter options for finding templates
+ */
+const TemplateSearchFilter = ({ filters, onFilterChange }) => {
+  const handleTextChange = (e) => {
+    onFilterChange({ [e.target.name]: e.target.value });
+  };
+  
+  const handleDateChange = (field, date) => {
+    onFilterChange({ [field]: date });
+  };
+  
+  const handleReset = () => {
+    onFilterChange({
+      name: '',
+      status: 'all',
+      createdBy: '',
+      dateFrom: null,
+      dateTo: null,
+      sortBy: 'modifiedAt',
+      sortDirection: 'desc'
+    });
+  };
+  
+  return (
+    <div className="template-search-filter">
+      <div className="filter-row">
+        <div className="filter-group">
+          <label htmlFor="name">Template Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={filters.name}
+            onChange={handleTextChange}
+            placeholder="Search by name"
+            className="form-control"
+          />
+        </div>
+        
+        <div className="filter-group">
+          <label htmlFor="status">Status</label>
+          <select
+            id="status"
+            name="status"
+            value={filters.status}
+            onChange={handleTextChange}
+            className="form-control"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="inactive">Inactive</option>
+            <option value="deprecated">Deprecated</option>
+          </select>
+        </div>
+        
+        <div className="filter-group">
+          <label htmlFor="createdBy">Created By</label>
+          <input
+            type="text"
+            id="createdBy"
+            name="createdBy"
+            value={filters.createdBy}
+            onChange={handleTextChange}
+            placeholder="User name"
+            className="form-control"
+          />
+        </div>
+      </div>
+      
+      <div className="filter-row">
+        <div className="filter-group">
+          <label htmlFor="dateFrom">Date From</label>
+          <DatePicker
+            id="dateFrom"
+            selected={filters.dateFrom}
+            onChange={(date) => handleDateChange('dateFrom', date)}
+            className="form-control"
+            placeholderText="From date"
+            isClearable
+          />
+        </div>
+        
+        <div className="filter-group">
+          <label htmlFor="dateTo">Date To</label>
+          <DatePicker
+            id="dateTo"
+            selected={filters.dateTo}
+            onChange={(date) => handleDateChange('dateTo', date)}
+            className="form-control"
+            placeholderText="To date"
+            isClearable
+          />
+        </div>
+        
+        <div className="filter-group">
+          <label htmlFor="sortBy">Sort By</label>
+          <div className="sort-controls">
+            <select
+              id="sortBy"
+              name="sortBy"
+              value={filters.sortBy}
+              onChange={handleTextChange}
+              className="form-control"
+            >
+              <option value="name">Name</option>
+              <option value="createdAt">Creation Date</option>
+              <option value="modifiedAt">Modified Date</option>
+              <option value="status">Status</option>
+            </select>
+            
+            <select
+              name="sortDirection"
+              value={filters.sortDirection}
+              onChange={handleTextChange}
+              className="form-control"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div className="filter-actions">
+        <button
+          className="btn btn-primary"
+          onClick={() => onFilterChange(filters)}
+        >
+          Apply Filters
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={handleReset}
+        >
+          Reset Filters
+        </button>
+      </div>
+    </div>
+  );
+};
+
+TemplateSearchFilter.propTypes = {
+  filters: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    status: PropTypes.string.isRequired,
+    createdBy: PropTypes.string.isRequired,
+    dateFrom: PropTypes.instanceOf(Date),
+    dateTo: PropTypes.instanceOf(Date),
+    sortBy: PropTypes.string.isRequired,
+    sortDirection: PropTypes.string.isRequired
+  }).isRequired,
+  onFilterChange: PropTypes.func.isRequired
+};
+
+export default TemplateSearchFilter;
+
+// FOLDER: src/components/common
+// FILE: LoadingSpinner.js
+import React from 'react';
+import PropTypes from 'prop-types';
+
+/**
+ * LoadingSpinner component for showing loading state
+ */
+const LoadingSpinner = ({ message }) => {
+  return (
+    <div className="loading-spinner-container">
+      <div className="spinner"></div>
+      {message && <p className="loading-message">{message}</p>}
+    </div>
+  );
+};
+
+LoadingSpinner.propTypes = {
+  message: PropTypes.string
+};
+
+export default LoadingSpinner;
+
+// FOLDER: src/components
+// FILE: TemplateEditor.js
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useTemplateContext } from '../contexts/TemplateContext';
+import TemplateMetadata from './TemplateEditor/TemplateMetadata';
+import VisualEditor from './TemplateEditor/VisualEditor';
+import FieldMapper from './TemplateEditor/FieldMapper';
+import TemplatePreview from './TemplateEditor/TemplatePreview';
+import LoadingSpinner from './common/LoadingSpinner';
+import { toast } from 'react-toastify';
+
+/**
+ * TemplateEditor component for creating and editing templates
+ * Provides a multi-step interface for template configuration
+ */
+const TemplateEditor = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isNewTemplate = !id;
+  
+  const { getTemplate, createTemplate, updateTemplate } = useTemplateContext();
+  
+  const [activeStep, setActiveStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [testData, setTestData] = useState({});
+  const [previewUrl, setPreviewUrl] = useState(null);
+  
+  const [template, setTemplate] = useState({
+    id: '',
+    name: '',
+    description: '',
+    version: 1,
+    status: 'draft',
+    type: 'invoice',
+    orientation: 'portrait',
+    paperSize: 'A4',
+    margins: {
+      top: 20,
+      right: 20,
+      bottom: 20,
+      left: 20,
+      unit: 'mm'
+    },
+    styles: {},
+    fieldMappings: [],
+    metadata: {}
+  });
+  
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!isNewTemplate) {
+        try {
+          setIsLoading(true);
+          const loadedTemplate = await getTemplate(id);
+          setTemplate(loadedTemplate);
+          setIsLoading(false);
+        } catch (err) {
+          setError('Failed to load template. Please try again.');
+          setIsLoading(false);
+          console.error('Error loading template:', err);
+        }
+      }
+    };
+    
+    loadTemplate();
+  }, [id, isNewTemplate, getTemplate]);
+  
+  const handleMetadataChange = (metadata) => {
+    setTemplate(prev => ({ ...prev, ...metadata }));
+  };
+  
+  const handleFieldMapping = (fieldMappings) => {
+    setTemplate(prev => ({ ...prev, fieldMappings }));
+  };
+  
+  const handleElementUpdate = (elements) => {
+    // Update template body elements
+    setTemplate(prev => ({
+      ...prev,
+      body: {
+        ...prev.body,
+        elements
+      }
+    }));
+  };
+  
+  const handleTestTemplate = async () => {
+    try {
+      setIsLoading(true);
+      // In a real implementation, this would call an API to generate a preview
+      const result = await new Promise(resolve => {
+        setTimeout(() => {
+          resolve(`/previews/sample-${Date.now()}.pdf`);
+        }, 1000);
+      });
+      
+      setPreviewUrl(result);
+      setIsLoading(false);
+    } catch (err) {
+      setError('Failed to generate template preview');
+      setIsLoading(false);
+      console.error('Error testing template:', err);
+    }
+  };
+  
+  const handleSaveTemplate = async () => {
+    try {
+      setIsLoading(true);
+      let savedTemplate;
+      
+      if (isNewTemplate) {
+        savedTemplate = await createTemplate(template);
+        toast.success('Template created successfully');
+      } else {
+        savedTemplate = await updateTemplate(id, template);
+        toast.success('Template updated successfully');
+      }
+      
+      setIsLoading(false);
+      navigate(`/templates/view/${savedTemplate.id}`);
+    } catch (err) {
+      setError('Failed to save template. Please try again.');
+      setIsLoading(false);
+      toast.error('Error saving template');
+      console.error('Error saving template:', err);
+    }
+  };
+  
+  const steps = [
+    {
+      title: 'Basic Information',
+      component: (
+        <TemplateMetadata
+          metadata={template}
+          onChange={handleMetadataChange}
+        />
+      )
+    },
+    {
+      title: 'Visual Editor',
+      component: (
+        <VisualEditor
+          template={template}
+          onElementUpdate={handleElementUpdate}
+        />
+      )
+    },
+    {
+      title: 'Field Mapping',
+      component: (
+        <FieldMapper
+          template={template}
+          onFieldMappingChange={handleFieldMapping}
+        />
+      )
+    },
+    {
+      title: 'Preview & Test',
+      component: (
+        <TemplatePreview
+          template={template}
+          testData={testData}
+          previewUrl={previewUrl}
+          onTestDataChange={setTestData}
+          onGeneratePreview={handleTestTemplate}
+        />
+      )
+    }
+  ];
+  
+  const handleStepChange = (stepIndex) => {
+    if (stepIndex >= 0 && stepIndex < steps.length) {
+      setActiveStep(stepIndex);
+    }
+  };
+  
+  const handleNext = () => {
+    if (activeStep < steps.length - 1) {
+      setActiveStep(activeStep + 1);
+    }
+  };
+  
+  const handlePrevious = () => {
+    if (activeStep > 0) {
+      setActiveStep(activeStep - 1);
+    }
+  };
+  
+  if (error) {
+    return (
+      <div className="error-container">
+        <h3>Error</h3>
+        <p>{error}</p>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => navigate('/templates')}
+        >
+          Return to Template Repository
+        </button>
+      </div>
+    );
+  }
+  
+  if (isLoading && !isNewTemplate) {
+    return <LoadingSpinner message="Loading template..." />;
+  }
+  
+  return (
+    <div className="template-editor-container">
+      <header className="editor-header">
+        <h2>
+          {isNewTemplate ? 'Create New Template' : `Edit Template: ${template.name}`}
+        </h2>
+      </header>
+      
+      <div className="editor-steps">
+        {steps.map((step, index) => (
+          <div 
+            key={index}
+            className={`step ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
+            onClick={() => handleStepChange(index)}
+          >
+            <span className="step-number">{index + 1}</span>
+            <span className="step-title">{step.title}</span>
+          </div>
+        ))}
+      </div>
+      
+      <div className="editor-content">
+        {steps[activeStep].component}
+      </div>
+      
+      <div className="editor-actions">
+        <button
+          className="btn btn-secondary"
+          onClick={handlePrevious}
+          disabled={activeStep === 0}
+        >
+          Previous
+        </button>
+        
+        {activeStep < steps.length - 1 ? (
+          <button
+            className="btn btn-primary"
+            onClick={handleNext}
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            className="btn btn-success"
+            onClick={handleSaveTemplate}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Saving...' : 'Save Template'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TemplateEditor;
+
+// FOLDER: src/components/TemplateEditor
+// FILE: TemplateMetadata.js
+import React from 'react';
+import PropTypes from 'prop-types';
+
+/**
+ * TemplateMetadata component for editing basic template information
+ */
+const TemplateMetadata = ({ metadata, onChange }) => {
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    onChange({ [name]: value });
+  };
+  
+  const handleMarginChange = (e) => {
+    const { name, value } = e.target;
+    const margin = name.split('.')[1]; // Extract margin property name
+    
+    onChange({
+      margins: {
+        ...metadata.margins,
+        [margin]: parseFloat(value)
+      }
+    });
+  };
+  
+  return (
+    <div className="template-metadata">
+      <div className="form-section">
+        <h3>Basic Information</h3>
+        
+        <div className="form-group">
+          <label htmlFor="name">Template Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={metadata.name}
+            onChange={handleInputChange}
+            className="form-control"
+            required
+          />
+          <small className="form-text text-muted">
+            Enter a descriptive name for this template
+          </small>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="description">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={metadata.description || ''}
+            onChange={handleInputChange}
+            className="form-control"
+            rows={3}
+          />
+          <small className="form-text text-muted">
+            Provide additional details about the template's purpose or usage
+          </small>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="status">Status</label>
+          <select
+            id="status"
+            name="status"
+            value={metadata.status}
+            onChange={handleInputChange}
+            className="form-control"
+          >
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="deprecated">Deprecated</option>
+          </select>
+        </div>
+      </div>
+      
+      <div className="form-section">
+        <h3>Layout Settings</h3>
+        
+        <div className="form-row">
+          <div className="form-group col-md-6">
+            <label htmlFor="orientation">Orientation</label>
+            <select
+              id="orientation"
+              name="orientation"
+              value={metadata.orientation}
+              onChange={handleInputChange}
+              className="form-control"
+            >
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+          
+          <div className="form-group col-md-6">
+            <label htmlFor="paperSize">Paper Size</label>
+            <select
+              id="paperSize"
+              name="paperSize"
+              value={metadata.paperSize}
+              onChange={handleInputChange}
+              className="form-control"
+            >
+              <option value="A4">A4</option>
+              <option value="Letter">Letter</option>
+              <option value="Legal">Legal</option>
+              <option value="Custom">Custom</option>
+            </select>
+          </div>
+        </div>
+        
+        {metadata.paperSize === 'Custom' && (
+          <div className="form-row">
+            <div className="form-group col-md-6">
+              <label htmlFor="customWidth">Width (mm)</label>
+              <input
+                type="number"
+                id="customWidth"
+                name="customDimensions.width"
+                value={metadata.customDimensions?.width || 210}
+                onChange={handleInputChange}
+                className="form-control"
+                min="1"
+              />
+            </div>
+            
+            <div className="form-group col-md-6">
+              <label htmlFor="customHeight">Height (mm)</label>
+              <input
+                type="number"
+                id="customHeight"
+                name="customDimensions.height"
+                value={metadata.customDimensions?.height || 297}
+                onChange={handleInputChange}
+                className="form-control"
+                min="1"
+              />
+            </div>
+          </div>
+        )}
+        
+        <h4>Margins</h4>
+        <div className="form-row">
+          <div className="form-group col-md-3">
+            <label htmlFor="marginTop">Top</label>
+            <input
+              type="number"
+              id="marginTop"
+              name="margins.top"
+              value={metadata.margins.top}
+              onChange={handleMarginChange}
+              className="form-control"
+              min="0"
+            />
+          </div>
+          
+          <div className="form-group col-md-3">
+            <label htmlFor="marginRight">Right</label>
+            <input
+              type="number"
+              id="marginRight"
+              name="margins.right"
+              value={metadata.margins.right}
+              onChange={handleMarginChange}
+              className="form-control"
+              min="0"
+            />
+          </div>
+          
+          <div className="form-group col-md-3">
+            <label htmlFor="marginBottom">Bottom</label>
+            <input
+              type="number"
+              id="marginBottom"
+              name="margins.bottom"
+              value={metadata.margins.bottom}
+              onChange={handleMarginChange}
+              className="form-control"
+              min="0"
+            />
+          </div>
+          
+          <div className="form-group col-md-3">
+            <label htmlFor="marginLeft">Left</label>
+            <input
+              type="number"
+              id="marginLeft"
+              name="margins.left"
+              value={metadata.margins.left}
+              onChange={handleMarginChange}
+              className="form-control"
+              min="0"
+            />
+          </div>
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="marginUnit">Unit</label>
+          <select
+            id="marginUnit"
+            name="margins.unit"
+            value={metadata.margins.unit}
+            onChange={handleMarginChange}
+            className="form-control"
+          >
+            <option value="mm">mm</option>
+            <option value="inch">inch</option>
+          </select>
+        </div>
+      </div>
+      
+      <div className="form-section">
+        <h3>Tags</h3>
+        <div className="form-group">
+          <input
+            type="text"
+            name="tags"
+            className="form-control"
+            placeholder="Add tags separated by commas"
+          />
+          <small className="form-text text-muted">
+            Tags help with organizing and finding templates
+          </small>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+TemplateMetadata.propTypes = {
+  metadata: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    status: PropTypes.string.isRequired,
+    orientation: PropTypes.string.isRequired,
+    paperSize: PropTypes.string.isRequired,
+    customDimensions: PropTypes.shape({
+      width: PropTypes.number,
+      height: PropTypes.number,
+      unit: PropTypes.string
+    }),
+    margins: PropTypes.shape({
+      top: PropTypes.number.isRequired,
+      right: PropTypes.number.isRequired,
+      bottom: PropTypes.number.isRequired,
+      left: PropTypes.number.isRequired,
+      unit: PropTypes.string.isRequired
+    }).isRequired
+  }).isRequired,
+  onChange: PropTypes.func.isRequired
+};
+
+export default TemplateMetadata;
+
+// FILE: VisualEditor.js
+import React, { useState, useRef } from 'react';
+import PropTypes from 'prop-types';
+import EditorToolbar from './EditorToolbar';
+import CanvasArea from './CanvasArea';
+import ElementProperties from './ElementProperties';
+
+/**
+ * VisualEditor component for designing templates visually
+ * Provides a WYSIWYG interface for template creation
+ */
+const VisualEditor = ({ template, onElementUpdate }) => {
+  const [elements, setElements] = useState(template.body?.elements || []);
+  const [selectedElement, setSelectedElement] = useState(null);
+  const [zoom, setZoom] = useState(100);
+  const canvasRef = useRef(null);
+  
+  const handleAddElement = (elementType) => {
+    const newElement = createNewElement(elementType);
+    const updatedElements = [...elements, newElement];
+    setElements(updatedElements);
+    onElementUpdate(updatedElements);
+    setSelectedElement(newElement);
+  };
+  
+  const createNewElement = (type) => {
+    const baseElement = {
+      id: `element-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      position: {
+        x: 50,
+        y: 50,
+        width: 200,
+        height: 50
+      },
+      style: {
+        border: 'none',
+        padding: '5px'
+      },
+      visible: true,
+      printable: true
+    };
+    
+    switch (type) {
+      case 'text':
+        return {
+          ...baseElement,
+          type: 'text',
+          content: 'New Text Element',
+          textStyle: {
+            fontFamily: 'Arial',
+            fontSize: 12,
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textAlign: 'left',
+            color: '#000000',
+            lineHeight: 1.2
+          }
+        };
+        
+      case 'dynamicField':
+        return {
+          ...baseElement,
+          type: 'dynamicField',
+          fieldId: `field-${Date.now()}`,
+          defaultValue: 'Sample Value',
+          fieldType: 'text',
+          formatOptions: {}
+        };
+        
+      case 'image':
+        return {
+          ...baseElement,
+          type: 'image',
+          position: {
+            ...baseElement.position,
+            width: 100,
+            height: 100
+          },
+          src: '/placeholder-image.png',
+          alt
