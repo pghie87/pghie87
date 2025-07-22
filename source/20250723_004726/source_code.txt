@@ -1,0 +1,1011 @@
+/src/components/InvoiceFormContainer.js
+```javascript
+import React, { useState, useEffect } from 'react';
+import ClientSelector from './form-components/ClientSelector';
+import TemplateSelector from './form-components/TemplateSelector';
+import TripDataSection from './form-components/TripDataSection';
+import DateInput from './form-components/DateInput';
+import AttachmentsSection from './form-components/AttachmentsSection';
+import TextAreaInput from './form-components/TextAreaInput';
+import Button from './common/Button';
+import ValidationService from '../services/ValidationService';
+import APIService from '../services/APIService';
+
+/**
+ * Container component for the invoice form that handles form state and user inputs
+ * @param {Object} props - Component props
+ * @param {Object} props.formData - Current form data
+ * @param {Object} props.errors - Validation errors
+ * @param {Function} props.onChange - Function to handle form field changes
+ * @param {Function} props.onAttachmentUpload - Function to handle attachment uploads
+ * @param {Function} props.onClientChange - Function to handle client selection changes
+ * @param {Function} props.onTripSelection - Function to handle trip selection
+ * @param {Function} props.onPreview - Function to trigger invoice preview
+ */
+const InvoiceFormContainer = ({
+  formData,
+  errors,
+  onChange,
+  onAttachmentUpload,
+  onClientChange,
+  onTripSelection,
+  onPreview
+}) => {
+  const [templates, setTemplates] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const validationService = new ValidationService();
+
+  // Load templates when client changes
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      if (!formData.clientId) {
+        setTemplates([]);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        const apiService = new APIService();
+        const response = await apiService.get(`/templates`, { 
+          clientId: formData.clientId, 
+          status: 'active' 
+        });
+        
+        if (response.success) {
+          setTemplates(response.data || []);
+        } else {
+          console.error('Failed to fetch templates:', response.message);
+        }
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTemplates();
+  }, [formData.clientId]);
+  
+  // Handle field changes with validation
+  const handleFieldChange = (field, value) => {
+    // Validate the field
+    const fieldError = validationService.validateField(field, value);
+    
+    // Update the form data
+    onChange(field, value, fieldError);
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate all fields before preview
+    const validationResult = validationService.validateForm(formData);
+    
+    if (validationResult.isValid) {
+      onPreview();
+    } else {
+      // Display errors for each field
+      Object.entries(validationResult.errors).forEach(([field, error]) => {
+        onChange(field, formData[field], error);
+      });
+    }
+  };
+  
+  return (
+    <div className="invoice-form-container">
+      <h2>Create New Invoice</h2>
+      <form onSubmit={handleSubmit}>
+        <section className="form-section">
+          <h3>Client & Template Selection</h3>
+          <ClientSelector 
+            selectedClientId={formData.clientId}
+            onClientChange={onClientChange}
+            error={errors.clientId}
+            disabled={isLoading}
+          />
+          
+          <TemplateSelector 
+            templates={templates}
+            selectedTemplateId={formData.templateId}
+            onChange={(value) => handleFieldChange('templateId', value)}
+            error={errors.templateId}
+            disabled={!formData.clientId || isLoading}
+          />
+        </section>
+        
+        <section className="form-section">
+          <h3>Trip Data</h3>
+          <TripDataSection 
+            tripData={formData.tripData}
+            onTripSelection={onTripSelection}
+            onTripDataChange={(field, value) => {
+              const updatedTripData = {...(formData.tripData || {}), [field]: value};
+              handleFieldChange('tripData', updatedTripData);
+            }}
+            error={errors.tripData}
+            disabled={!formData.clientId || !formData.templateId}
+          />
+        </section>
+        
+        <section className="form-section">
+          <h3>Invoice Details</h3>
+          <div className="form-row">
+            <DateInput 
+              label="Invoice Date"
+              value={formData.invoiceDate}
+              onChange={(value) => handleFieldChange('invoiceDate', value)}
+              error={errors.invoiceDate}
+            />
+            
+            <DateInput 
+              label="Due Date"
+              value={formData.dueDate}
+              onChange={(value) => handleFieldChange('dueDate', value)}
+              error={errors.dueDate}
+            />
+          </div>
+        </section>
+        
+        <section className="form-section">
+          <h3>Supporting Documents</h3>
+          <AttachmentsSection 
+            attachments={formData.attachments}
+            onUpload={onAttachmentUpload}
+            onRemove={(index) => {
+              const updatedAttachments = [...formData.attachments];
+              updatedAttachments.splice(index, 1);
+              handleFieldChange('attachments', updatedAttachments);
+            }}
+            error={errors.attachments}
+          />
+        </section>
+        
+        <section className="form-section">
+          <h3>Notes & Additional Information</h3>
+          <TextAreaInput 
+            value={formData.notes}
+            onChange={(value) => handleFieldChange('notes', value)}
+            placeholder="Add any notes or additional information here..."
+            rows={3}
+            error={errors.notes}
+          />
+        </section>
+        
+        <div className="form-actions">
+          <Button variant="outline" type="button" onClick={() => window.history.back()}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            type="submit"
+            disabled={!formData.clientId || !formData.templateId || !formData.tripData}
+          >
+            Preview Invoice
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default InvoiceFormContainer;
+```
+
+/src/components/InvoicePreview.js
+```javascript
+import React, { useState } from 'react';
+import Button from './common/Button';
+import LoadingIndicator from './common/LoadingIndicator';
+import ValidationSummary from './common/ValidationSummary';
+
+/**
+ * Component for displaying invoice preview and enabling final generation
+ * @param {Object} props - Component props
+ * @param {string} props.previewUrl - URL to the preview PDF
+ * @param {Object} props.formData - Form data used to generate the preview
+ * @param {Function} props.onEdit - Function to return to edit mode
+ * @param {Function} props.onGenerate - Function to trigger final invoice generation
+ */
+const InvoicePreview = ({ previewUrl, formData, onEdit, onGenerate }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Handle final generation
+  const handleGenerateInvoice = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await onGenerate();
+    } catch (err) {
+      setError(err.message || 'An error occurred during invoice generation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // If still loading initial preview
+  if (!previewUrl && !error) {
+    return <LoadingIndicator message="Generating invoice preview..." />;
+  }
+  
+  // If error occurred during preview generation
+  if (!previewUrl && error) {
+    return (
+      <div className="invoice-preview-error">
+        <h2>Preview Generation Error</h2>
+        <ValidationSummary errors={[{ field: 'general', message: error }]} />
+        <div className="preview-actions">
+          <Button variant="primary" onClick={onEdit}>
+            Return to Edit
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="invoice-preview-container">
+      <h2>Invoice Preview</h2>
+      
+      <div className="preview-summary">
+        <div className="summary-item">
+          <span className="label">Client:</span>
+          <span className="value">{formData.clientName || formData.clientId}</span>
+        </div>
+        {formData.tripData && (
+          <>
+            <div className="summary-item">
+              <span className="label">From:</span>
+              <span className="value">{formData.tripData.origin}</span>
+            </div>
+            <div className="summary-item">
+              <span className="label">To:</span>
+              <span className="value">{formData.tripData.destination}</span>
+            </div>
+            <div className="summary-item">
+              <span className="label">Date:</span>
+              <span className="value">{formData.invoiceDate}</span>
+            </div>
+          </>
+        )}
+      </div>
+      
+      <div className="preview-frame">
+        <iframe 
+          src={previewUrl} 
+          title="Invoice Preview" 
+          className="preview-iframe"
+          aria-label="Invoice Preview Document"
+        />
+      </div>
+      
+      <div className="preview-actions">
+        {error && <ValidationSummary errors={[{ field: 'general', message: error }]} />}
+        
+        <Button variant="outline" onClick={onEdit} disabled={isLoading}>
+          Edit Invoice
+        </Button>
+        
+        <Button 
+          variant="primary" 
+          onClick={handleGenerateInvoice} 
+          disabled={isLoading}
+        >
+          {isLoading ? 'Generating...' : 'Generate Final Invoice'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default InvoicePreview;
+```
+
+/src/components/InvoiceGenerationComplete.js
+```javascript
+import React from 'react';
+import Button from './common/Button';
+import { formatDate } from '../utils/dateUtils';
+
+/**
+ * Component shown after successful invoice generation
+ * @param {Object} props - Component props
+ * @param {string} props.invoiceId - ID of the generated invoice
+ * @param {Function} props.onDownload - Function to trigger invoice download
+ * @param {Function} props.onCreateNew - Function to start new invoice creation
+ */
+const InvoiceGenerationComplete = ({ invoiceId, onDownload, onCreateNew }) => {
+  const currentDate = formatDate(new Date());
+  
+  return (
+    <div className="invoice-generation-complete">
+      <div className="success-icon">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="30" fill="#4CAF50" fillOpacity="0.1" />
+          <circle cx="32" cy="32" r="24" stroke="#4CAF50" strokeWidth="2" />
+          <path d="M20 32L28 40L44 24" stroke="#4CAF50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      
+      <h2>Invoice Generated Successfully</h2>
+      
+      <div className="invoice-details">
+        <div className="detail-row">
+          <span className="label">Invoice ID:</span>
+          <span className="value">{invoiceId}</span>
+        </div>
+        
+        <div className="detail-row">
+          <span className="label">Generation Date:</span>
+          <span className="value">{currentDate}</span>
+        </div>
+      </div>
+      
+      <p className="success-message">
+        Your invoice has been generated and stored in the system. You can download it now or access it later from the invoice management dashboard.
+      </p>
+      
+      <div className="action-buttons">
+        <Button variant="outline" onClick={onCreateNew}>
+          Create New Invoice
+        </Button>
+        
+        <Button variant="primary" onClick={() => onDownload(invoiceId)}>
+          Download Invoice
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default InvoiceGenerationComplete;
+```
+
+/src/components/InvoiceGenerationFeature.js
+```javascript
+import React from 'react';
+import InvoiceFormContainer from './InvoiceFormContainer';
+import InvoicePreview from './InvoicePreview';
+import InvoiceGenerationComplete from './InvoiceGenerationComplete';
+import StepIndicator from './common/StepIndicator';
+import LoadingIndicator from './common/LoadingIndicator';
+import ValidationSummary from './common/ValidationSummary';
+import InvoiceGenerationService from '../services/InvoiceGenerationService';
+import DocumentService from '../services/DocumentService';
+import APIService from '../services/APIService';
+import { addDays } from '../utils/dateUtils';
+
+// Step enumeration for the invoice generation process
+const InvoiceGenerationStep = {
+  DATA_INPUT: 'data_input',
+  PREVIEW: 'preview',
+  COMPLETION: 'completion'
+};
+
+/**
+ * Main feature component for invoice generation
+ * Manages the overall state and workflow of the invoice generation process
+ */
+class InvoiceGenerationFeature extends React.Component {
+  constructor(props) {
+    super(props);
+    
+    // Initialize services
+    this.invoiceService = new InvoiceGenerationService();
+    this.documentService = new DocumentService();
+    this.apiService = new APIService();
+    
+    // Initialize state
+    this.state = {
+      step: InvoiceGenerationStep.DATA_INPUT,
+      formData: this.initializeFormData(),
+      isLoading: false,
+      errors: {},
+      validationStatus: null,
+      generatedInvoiceId: null,
+      previewUrl: null,
+      clientData: null,
+    };
+  }
+  
+  /**
+   * Initialize form with default values or from props
+   */
+  initializeFormData() {
+    return {
+      clientId: this.props.clientId || '',
+      clientName: '',
+      templateId: '',
+      tripData: null,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      dueDate: addDays(new Date(), 30).toISOString().split('T')[0],
+      customFields: {},
+      attachments: [],
+      notes: ''
+    };
+  }
+  
+  /**
+   * Initialize data from props when component mounts
+   */
+  componentDidMount() {
+    this.initializeFromProps();
+  }
+  
+  /**
+   * Load initial data based on props (client, trip)
+   */
+  async initializeFromProps() {
+    const { clientId, tripId } = this.props;
+    
+    if (clientId) {
+      await this.handleClientChange(clientId);
+    }
+    
+    if (tripId) {
+      await this.handleTripSelection(tripId);
+    }
+  }
+  
+  /**
+   * Handle client selection change
+   * @param {string} clientId - Selected client ID
+   */
+  handleClientChange = async (clientId) => {
+    this.setState({ isLoading: true });
+    
+    try {
+      // Fetch client details
+      const response = await this.apiService.get(`/clients/${clientId}`);
+      
+      if (response.success) {
+        // Update form data with client information
+        this.setState(prevState => ({
+          formData: {
+            ...prevState.formData,
+            clientId,
+            clientName: response.data.name,
+            templateId: '' // Reset template when client changes
+          },
+          clientData: response.data,
+          errors: {
+            ...prevState.errors,
+            clientId: null
+          }
+        }));
+      } else {
+        this.setState(prevState => ({
+          errors: {
+            ...prevState.errors,
+            clientId: 'Failed to load client information'
+          }
+        }));
+      }
+    } catch (error) {
+      this.setState(prevState => ({
+        errors: {
+          ...prevState.errors,
+          clientId: 'Error loading client: ' + (error.message || 'Unknown error')
+        }
+      }));
+    } finally {
+      this.setState({ isLoading: false });
+    }
+  }
+  
+  /**
+   * Handle trip selection
+   * @param {string} tripId - Selected trip ID
+   */
+  handleTripSelection = async (tripId) => {
+    this.setState({ isLoading: true });
+    
+    try {
+      // Fetch trip data
+      const response = await this.apiService.get(`/trips/${tripId}`);
+      
+      if (response.success) {
+        // Update form with trip data
+        this.setState(prevState => ({
+          formData: {
+            ...prevState.formData,
+            tripData: response.data
+          },
+          errors: {
+            ...prevState.errors,
+            tripData: null
+          }
+        }));
+      } else {
+        this.setState(prevState => ({
+          errors: {
+            ...prevState.errors,
+            tripData: 'Failed to load trip information'
+          }
+        }));
+      }
+    } catch (error) {
+      this.setState(prevState => ({
+        errors: {
+          ...prevState.errors,
+          tripData: 'Error loading trip: ' + (error.message || 'Unknown error')
+        }
+      }));
+    } finally {
+      this.setState({ isLoading: false });
+    }
+  }
+  
+  /**
+   * Handle form field changes
+   * @param {string} field - Field name
+   * @param {any} value - New field value
+   * @param {string} error - Validation error if any
+   */
+  handleFormChange = (field, value, error = null) => {
+    this.setState(prevState => ({
+      formData: {
+        ...prevState.formData,
+        [field]: value
+      },
+      errors: {
+        ...prevState.errors,
+        [field]: error
+      }
+    }));
+  }
+  
+  /**
+   * Handle file attachments
+   * @param {File[]} files - Array of files to upload
+   */
+  handleAttachmentUpload = async (files) => {
+    this.setState({ isLoading: true });
+    
+    try {
+      // Create temporary attachments with pending status
+      const pendingAttachments = files.map(file => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        file,
+        uploadStatus: 'pending',
+        uploadProgress: 0
+      }));
+      
+      // Add pending attachments to the form data
+      this.setState(prevState => ({
+        formData: {
+          ...prevState.formData,
+          attachments: [
+            ...prevState.formData.attachments,
+            ...pendingAttachments
+          ]
+        }
+      }));
+      
+      // Upload each file and update status
+      const uploadedAttachments = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        try {
+          // Update status to uploading
+          this.setState(prevState => {
+            const attachments = [...prevState.formData.attachments];
+            const index = attachments.findIndex(att => 
+              att.name === pendingAttachments[i].name && att.uploadStatus === 'pending'
+            );
+            
+            if (index >= 0) {
+              attachments[index] = {
+                ...attachments[index],
+                uploadStatus: 'uploading',
+                uploadProgress: 0
+              };
+            }
+            
+            return {
+              formData: {
+                ...prevState.formData,
+                attachments
+              }
+            };
+          });
+          
+          // Upload file with progress tracking
+          const uploadResult = await this.documentService.uploadDocument(
+            file,
+            (progress) => {
+              // Update upload progress
+              this.setState(prevState => {
+                const attachments = [...prevState.formData.attachments];
+                const index = attachments.findIndex(att => 
+                  att.name === pendingAttachments[i].name && 
+                  att.uploadStatus === 'uploading'
+                );
+                
+                if (index >= 0) {
+                  attachments[index] = {
+                    ...attachments[index],
+                    uploadProgress: progress
+                  };
+                }
+                
+                return {
+                  formData: {
+                    ...prevState.formData,
+                    attachments
+                  }
+                };
+              });
+            }
+          );
+          
+          // Add uploaded file to results
+          uploadedAttachments.push({
+            id: uploadResult.documentId,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            url: uploadResult.documentUrl,
+            uploadStatus: 'complete',
+            uploadProgress: 100
+          });
+          
+          // Update attachment status to complete
+          this.setState(prevState => {
+            const attachments = [...prevState.formData.attachments];
+            const index = attachments.findIndex(att => 
+              att.name === pendingAttachments[i].name && 
+              att.uploadStatus === 'uploading'
+            );
+            
+            if (index >= 0) {
+              attachments[index] = uploadedAttachments[uploadedAttachments.length - 1];
+            }
+            
+            return {
+              formData: {
+                ...prevState.formData,
+                attachments
+              }
+            };
+          });
+        } catch (error) {
+          // Update attachment status to error
+          this.setState(prevState => {
+            const attachments = [...prevState.formData.attachments];
+            const index = attachments.findIndex(att => 
+              att.name === pendingAttachments[i].name && 
+              (att.uploadStatus === 'pending' || att.uploadStatus === 'uploading')
+            );
+            
+            if (index >= 0) {
+              attachments[index] = {
+                ...attachments[index],
+                uploadStatus: 'error',
+                errorMessage: error.message || 'Upload failed'
+              };
+            }
+            
+            return {
+              formData: {
+                ...prevState.formData,
+                attachments
+              }
+            };
+          });
+        }
+      }
+    } catch (error) {
+      this.setState(prevState => ({
+        errors: {
+          ...prevState.errors,
+          attachments: 'Error uploading attachments: ' + (error.message || 'Unknown error')
+        }
+      }));
+    } finally {
+      this.setState({ isLoading: false });
+    }
+  }
+  
+  /**
+   * Handle invoice preview generation
+   */
+  handlePreviewInvoice = async () => {
+    this.setState({ 
+      isLoading: true,
+      validationStatus: null,
+      previewUrl: null
+    });
+    
+    try {
+      // Generate preview
+      const previewUrl = await this.invoiceService.generatePreview(this.state.formData);
+      
+      // Update state with preview URL and change step
+      this.setState({
+        previewUrl,
+        step: InvoiceGenerationStep.PREVIEW,
+        validationStatus: null
+      });
+    } catch (error) {
+      // Handle validation errors or other errors
+      if (error.validationErrors) {
+        this.setState({
+          validationStatus: {
+            hasErrors: true,
+            errors: error.validationErrors
+          }
+        });
+      } else {
+        this.setState({
+          validationStatus: {
+            hasErrors: true,
+            errors: [{
+              field: 'general',
+              message: error.message || 'Failed to generate preview'
+            }]
+          }
+        });
+      }
+    } finally {
+      this.setState({ isLoading: false });
+    }
+  }
+  
+  /**
+   * Handle final invoice generation
+   */
+  handleGenerateInvoice = async () => {
+    this.setState({ 
+      isLoading: true,
+      validationStatus: null
+    });
+    
+    try {
+      // Generate final invoice
+      const result = await this.invoiceService.generateInvoice(this.state.formData);
+      
+      if (result.success) {
+        // Update state with invoice ID and change step to completion
+        this.setState({
+          generatedInvoiceId: result.invoiceId,
+          step: InvoiceGenerationStep.COMPLETION,
+          validationStatus: null
+        });
+        
+        // Notify parent component if callback provided
+        if (this.props.onInvoiceGenerated) {
+          this.props.onInvoiceGenerated(result.invoiceId);
+        }
+      } else {
+        // Handle errors
+        this.setState({
+          validationStatus: {
+            hasErrors: true,
+            errors: result.errors || [{
+              field: 'general',
+              message: 'Failed to generate invoice'
+            }]
+          }
+        });
+      }
+    } catch (error) {
+      this.setState({
+        validationStatus: {
+          hasErrors: true,
+          errors: [{
+            field: 'general',
+            message: error.message || 'An error occurred during invoice generation'
+          }]
+        }
+      });
+    } finally {
+      this.setState({ isLoading: false });
+    }
+  }
+  
+  /**
+   * Handle invoice download
+   * @param {string} invoiceId - ID of the invoice to download
+   */
+  handleDownloadInvoice = async (invoiceId) => {
+    try {
+      // Get invoice download URL
+      const response = await this.apiService.get(`/invoices/${invoiceId}/download`);
+      
+      if (response.success && response.data.downloadUrl) {
+        // Open download in new window
+        window.open(response.data.downloadUrl, '_blank');
+      } else {
+        throw new Error('Could not retrieve download URL');
+      }
+    } catch (error) {
+      this.setState({
+        validationStatus: {
+          hasErrors: true,
+          errors: [{
+            field: 'general',
+            message: `Error downloading invoice: ${error.message || 'Unknown error'}`
+          }]
+        }
+      });
+    }
+  }
+  
+  /**
+   * Reset form to initial state for creating a new invoice
+   */
+  resetForm = () => {
+    this.setState({
+      step: InvoiceGenerationStep.DATA_INPUT,
+      formData: this.initializeFormData(),
+      errors: {},
+      validationStatus: null,
+      generatedInvoiceId: null,
+      previewUrl: null
+    });
+  }
+  
+  /**
+   * Render the current step content based on the current step
+   */
+  renderStepContent() {
+    const { step } = this.state;
+    
+    switch (step) {
+      case InvoiceGenerationStep.DATA_INPUT:
+        return (
+          <InvoiceFormContainer 
+            formData={this.state.formData}
+            errors={this.state.errors}
+            onChange={this.handleFormChange}
+            onAttachmentUpload={this.handleAttachmentUpload}
+            onClientChange={this.handleClientChange}
+            onTripSelection={this.handleTripSelection}
+            onPreview={this.handlePreviewInvoice}
+          />
+        );
+      
+      case InvoiceGenerationStep.PREVIEW:
+        return (
+          <InvoicePreview 
+            previewUrl={this.state.previewUrl}
+            formData={this.state.formData}
+            onEdit={() => this.setState({ step: InvoiceGenerationStep.DATA_INPUT })}
+            onGenerate={this.handleGenerateInvoice}
+          />
+        );
+      
+      case InvoiceGenerationStep.COMPLETION:
+        return (
+          <InvoiceGenerationComplete 
+            invoiceId={this.state.generatedInvoiceId}
+            onDownload={this.handleDownloadInvoice}
+            onCreateNew={this.resetForm}
+          />
+        );
+      
+      default:
+        return null;
+    }
+  }
+  
+  render() {
+    return (
+      <div className="invoice-generation-feature">
+        <StepIndicator 
+          steps={[
+            { id: InvoiceGenerationStep.DATA_INPUT, label: 'Enter Details' },
+            { id: InvoiceGenerationStep.PREVIEW, label: 'Preview' },
+            { id: InvoiceGenerationStep.COMPLETION, label: 'Complete' }
+          ]}
+          currentStep={this.state.step}
+        />
+        
+        {this.state.isLoading ? (
+          <LoadingIndicator message="Processing invoice data..." />
+        ) : (
+          this.renderStepContent()
+        )}
+        
+        {this.state.validationStatus?.hasErrors && (
+          <ValidationSummary errors={this.state.validationStatus.errors} />
+        )}
+      </div>
+    );
+  }
+}
+
+export default InvoiceGenerationFeature;
+```
+
+/src/components/form-components/ClientSelector.js
+```javascript
+import React, { useState, useEffect } from 'react';
+import APIService from '../../services/APIService';
+
+/**
+ * Component for selecting a client from a dropdown
+ * @param {Object} props - Component props
+ * @param {string} props.selectedClientId - Currently selected client ID
+ * @param {Function} props.onClientChange - Function to call when client selection changes
+ * @param {string} props.error - Error message
+ * @param {boolean} props.disabled - Whether the component is disabled
+ */
+const ClientSelector = ({ selectedClientId, onClientChange, error, disabled }) => {
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Fetch clients on component mount
+  useEffect(() => {
+    fetchClients();
+  }, []);
+  
+  // Fetch clients with optional search term
+  const fetchClients = async (search = '') => {
+    setIsLoading(true);
+    try {
+      const apiService = new APIService();
+      const response = await apiService.get('/clients', { 
+        search, 
+        status: 'active',
+        limit: 100
+      });
+      
+      if (response.success) {
+        setClients(response.data || []);
+      } else {
+        console.error('Failed to fetch clients:', response.message);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    
+    // Debounce search requests
+    if (term.length >= 2) {
+      const debounceTimer = setTimeout(() => {
+        fetchClients(term);
+      }, 300);
+      
+      return () => clearTimeout(debounceTimer);
+    } else if (term.length === 0) {
+      fetchClients();
+    }
+  };
+  
+  // Handle client selection change
+  const handleClientChange = (e) => {
+    const clientId = e.target.value;
+    onClientChange(clientId);
+  };
+  
+  return (
+    <div className="form-group">
+      <label htmlFor="clientSelector" className="form-label">
+        Client <span className="required">*</span>
+      </label>
+      
+      <div className="search-input">
+        <input
+          type="text"
+          placeholder="Search clients..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          disabled={disabled}
+          className="form-control search-field"
+        />
+        {isLo
