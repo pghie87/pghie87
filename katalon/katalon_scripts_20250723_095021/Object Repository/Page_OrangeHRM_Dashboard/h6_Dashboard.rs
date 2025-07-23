@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard header text</description>
+   <name>h6_Dashboard</name>
+   <tag></tag>
+   <elementGuidId>f6789012-def0-1234-5678-9abcdef01234</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//h6[text()='Dashboard']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[text()='Dashboard']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h6.oxd-text.oxd-text--h6.oxd-topbar-header-breadcrumb-module</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>h6</value>
+      <webElementGuid>f6789012-def0-1234-5678-9abcdef01234</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Dashboard</value>
+      <webElementGuid>g7890123-ef01-2345-6789-abcdef012345</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
