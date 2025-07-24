@@ -1,0 +1,426 @@
+## 1. Test Case File: Login_to_OrangeHRM.tc
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Test case to verify login functionality in Orange HRM</description>
+   <name>Login_to_OrangeHRM</name>
+   <tag>login, authentication</tag>
+   <comment></comment>
+   <testCaseGuid>a7b59e3c-8d54-4f8c-a79b-964c3e9bc123</testCaseGuid>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>7c3414e0-4a1d-4215-9c3b-ff202a54b731</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>9b0d14a8-3321-4ea0-9d11-43be89ab2f43</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## 2. Script File: Login_to_OrangeHRM.groovy
+
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+/**
+ * Test Case: Login to Orange HRM
+ * Description: This test case verifies the login functionality of Orange HRM.
+ * It checks valid login, validates dashboard navigation, and also validates error messages for invalid login.
+ */
+
+// Open the browser and navigate to the Orange HRM login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load completely
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_Login/img_Logo'), 10)
+
+// Verify login page elements are displayed
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Login/img_Logo'), 10)
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Login/h5_LoginTitle'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_Login/h5_LoginTitle'), 'Login')
+
+// Perform login with valid credentials
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Username'), username)
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Password'), password)
+WebUI.click(findTestObject('OrangeHRM/Page_Login/button_Login'))
+
+// Verify successful login by checking for dashboard elements
+WebUI.waitForElementPresent(findTestObject('OrangeHRM/Page_Dashboard/div_Dashboard'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_Dashboard/div_Dashboard'), 'Dashboard')
+
+// Verify user profile is displayed in the header
+WebUI.verifyElementPresent(findTestObject('OrangeHRM/Page_Dashboard/p_UserDropdown'), 10)
+
+// Logout from the application
+WebUI.click(findTestObject('OrangeHRM/Page_Dashboard/p_UserDropdown'))
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_Dashboard/a_Logout'), 5)
+WebUI.click(findTestObject('OrangeHRM/Page_Dashboard/a_Logout'))
+
+// Verify return to login page
+WebUI.waitForElementPresent(findTestObject('OrangeHRM/Page_Login/h5_LoginTitle'), 10)
+
+// Test invalid login scenario
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Username'), 'invalid_user')
+WebUI.setText(findTestObject('OrangeHRM/Page_Login/input_Password'), 'invalid_password')
+WebUI.click(findTestObject('OrangeHRM/Page_Login/button_Login'))
+
+// Verify error message is displayed
+WebUI.waitForElementVisible(findTestObject('OrangeHRM/Page_Login/div_InvalidCredentials'), 10)
+WebUI.verifyElementText(findTestObject('OrangeHRM/Page_Login/div_InvalidCredentials'), 'Invalid credentials')
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## 3. Object Repository Files
+
+### 3.1 OrangeHRM/Page_Login/img_Logo.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Orange HRM Logo on Login Page</description>
+   <name>img_Logo</name>
+   <tag></tag>
+   <elementGuidId>f2e55d7b-6a89-4301-bce3-a1178e7892e1</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='orangehrm-login-branding']/img</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.orangehrm-login-branding > img</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.2 OrangeHRM/Page_Login/h5_LoginTitle.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login Page Title</description>
+   <name>h5_LoginTitle</name>
+   <tag></tag>
+   <elementGuidId>e1b3cf4c-6a2c-48b5-8e9c-fa56e1342a22</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h5[contains(@class, 'orangehrm-login-title')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h5.orangehrm-login-title</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.3 OrangeHRM/Page_Login/input_Username.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input field</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>e3d7f0a8-d7ac-4d74-90ba-c1f34da7854a</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.4 OrangeHRM/Page_Login/input_Password.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>a7f59e3c-8654-4d8c-a79b-964c3e9bc456</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.5 OrangeHRM/Page_Login/button_Login.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button</description>
+   <name>button_Login</name>
+   <tag></tag>
+   <elementGuidId>b8f59e3c-8d54-4f8c-a79b-964c3e9bc789</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.orangehrm-login-button</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.6 OrangeHRM/Page_Login/div_InvalidCredentials.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Invalid credentials error message</description>
+   <name>div_InvalidCredentials</name>
+   <tag></tag>
+   <elementGuidId>c1f59e3c-8d54-4f8c-a79b-964c3e9bcabc</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//div[@class='oxd-alert-content oxd-alert-content--error']/p</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>div.oxd-alert-content.oxd-alert-content--error p</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.7 OrangeHRM/Page_Dashboard/div_Dashboard.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard page title</description>
+   <name>div_Dashboard</name>
+   <tag></tag>
+   <elementGuidId>d5e59e3c-8d54-4f8c-a79b-964c3e9bc012</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[contains(@class, 'oxd-topbar-header-breadcrumb-module')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h6.oxd-topbar-header-breadcrumb-module</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.8 OrangeHRM/Page_Dashboard/p_UserDropdown.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User dropdown menu in header</description>
+   <name>p_UserDropdown</name>
+   <tag></tag>
+   <elementGuidId>e8e59e3c-8d54-4f8c-a79b-964c3e9bc345</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//p[@class='oxd-userdropdown-name']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>p.oxd-userdropdown-name</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+### 3.9 OrangeHRM/Page_Dashboard/a_Logout.rs
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Logout link in user dropdown</description>
+   <name>a_Logout</name>
+   <tag></tag>
+   <elementGuidId>f7e59e3c-8d54-4f8c-a79b-964c3e9bc678</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value></value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//a[text()='Logout']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-userdropdown-link:last-child</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+</WebElementEntity>
+```
+
+## 4. Test Suite File: OrangeHRM_Login_Suite.ts
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestSuiteEntity>
+   <description>Test suite for Orange HRM login functionality</description>
+   <name>OrangeHRM_Login_Suite</name>
+   <tag></tag>
+   <isRerun>false</isRerun>
+   <mailRecipient></mailRecipient>
+   <numberOfRerun>0</numberOfRerun>
+   <pageLoadTimeout>30</pageLoadTimeout>
+   <pageLoadTimeoutDefault>true</pageLoadTimeoutDefault>
+   <rerunFailedTestCasesOnly>false</rerunFailedTestCasesOnly>
+   <rerunImmediately>false</rerunImmediately>
+   <testSuiteGuid>b9c59e3c-8d54-4f8c-a79b-964c3e9bc999</testSuiteGuid>
+   <testCaseLink>
+      <guid>2de7b733-c4a1-4b8f-9c61-a8c56bd8e123</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/Login_to_OrangeHRM</testCaseId>
+      <variableLink>
+         <testDataLinkId></testDataLinkId>
+         <type>DEFAULT</type>
+         <value></value>
+         <variableId>7c3414e0-4a1d-4215-9c3b-ff202a54b731</variableId>
+      </variableLink>
+      <variableLink>
+         <testDataLinkId></testDataLinkId>
+         <type>DEFAULT</type>
+         <value></value>
+         <variableId>9b0d14a8-3321-4ea0-9d11-43be89ab2f43</variableId>
+      </variableLink>
+   </testCaseLink>
+</TestSuiteEntity>
+```
+
+## 5. Test Listener: TestListener.groovy
+
+```groovy
+import com.kms.katalon.core.annotation.AfterTestCase
+import com.kms.katalon.core.annotation.BeforeTestCase
+import com.kms.katalon.core.context.TestCaseContext
+import com.kms.katalon.core.logging.KeywordLogger
+
+class TestListener {
+    KeywordLogger logger = new KeywordLogger()
+    
+    /**
+     * Executes before every test case starts.
+     * @param testCaseContext related information of the executed test case.
+     */
+    @BeforeTestCase
+    def beforeTestCase(TestCaseContext testCaseContext) {
+        logger.logInfo("Starting test case: " + testCaseContext.getTestCaseId())
+        logger.logInfo("Test data: " + testCaseContext.getTestCaseVariables())
+    }
+    
+    /**
+     * Executes after every test case ends.
+     * @param testCaseContext related information of the executed test case.
+     */
+    @AfterTestCase
+    def afterTestCase(TestCaseContext testCaseContext) {
+        def status = testCaseContext.getTestCaseStatus()
+        logger.logInfo("Finished test case: " + testCaseContext.getTestCaseId() + " with status: " + status)
+    }
+}
+```
+
+These files constitute a complete Katalon test automation setup for the Orange HRM login page. The test validates both successful login functionality and error handling for invalid credentials, while following Katalon Studio's best practices for web automation testing.
