@@ -1,0 +1,621 @@
+I'll create a complete set of Katalon automation files for testing the OrangeHRM login functionality at https://opensource-demo.orangehrmlive.com/web/index.php/auth/login.
+
+## Test Case File (.tc)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Login test for OrangeHRM demo site</description>
+   <name>TC_Login_001</name>
+   <tag>login, authentication</tag>
+   <comment></comment>
+   <testCaseGuid>a7b31d5c-4e9f-4e8c-b9c4-d8e7f5b5e1a3</testCaseGuid>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>c8e7d5f6-a1b2-4c3d-9e0f-1a2b3c4d5e6f</variableId>
+   </variableLinks>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>c8e7d5f6-a1b2-4c3d-9e0f-1a2b3c4d5e6f</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>d9f8e7c6-b5a4-3c2d-1e0f-9a8b7c6d5e4f</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## Dashboard Navigation Test Case File (.tc)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>Test navigation through the dashboard after login</description>
+   <name>TC_Dashboard_001</name>
+   <tag>dashboard, navigation</tag>
+   <comment></comment>
+   <testCaseGuid>b8c42e6d-5f10-5f9d-c0d5-e9f8g7h6i5j4</testCaseGuid>
+   <variableLinks>
+      <testDataLinkId></testDataLinkId>
+      <type>DEFAULT</type>
+      <value></value>
+      <variableId>a1b2c3d4-e5f6-7g8h-9i0j-1k2l3m4n5o6p</variableId>
+   </variableLinks>
+   <variable>
+      <defaultValue>'Admin'</defaultValue>
+      <description>Username for login</description>
+      <id>a1b2c3d4-e5f6-7g8h-9i0j-1k2l3m4n5o6p</id>
+      <masked>false</masked>
+      <name>username</name>
+   </variable>
+   <variable>
+      <defaultValue>'admin123'</defaultValue>
+      <description>Password for login</description>
+      <id>q7r8s9t0-u1v2-w3x4-y5z6-a7b8c9d0e1f2</id>
+      <masked>true</masked>
+      <name>password</name>
+   </variable>
+</TestCaseEntity>
+```
+
+## Login Script File (.groovy)
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+// Open browser and navigate to OrangeHRM login page
+WebUI.openBrowser('')
+WebUI.maximizeWindow()
+WebUI.navigateToUrl('https://opensource-demo.orangehrmlive.com/web/index.php/auth/login')
+
+// Wait for page to load
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Login/input_Username'), 10)
+
+// Enter username
+WebUI.setText(findTestObject('Object Repository/OrangeHRM/Page_Login/input_Username'), username)
+
+// Enter password
+WebUI.setEncryptedText(findTestObject('Object Repository/OrangeHRM/Page_Login/input_Password'), password)
+
+// Click login button
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Login/button_Login'))
+
+// Verify dashboard is displayed
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/h6_Dashboard'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/h6_Dashboard'), 5)
+
+// Capture screenshot of successful login
+WebUI.takeScreenshot('login_successful.png')
+
+// Log out
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/span_User_Dropdown'))
+WebUI.waitForElementClickable(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Logout'), 5)
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Logout'))
+
+// Verify return to login page
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Login/input_Username'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Login/input_Username'), 5)
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## Dashboard Navigation Script File (.groovy)
+```groovy
+import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
+import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
+import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
+import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
+import static com.kms.katalon.core.testobject.ObjectRepository.findWindowsObject
+import com.kms.katalon.core.checkpoint.Checkpoint as Checkpoint
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberKW
+import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
+import com.kms.katalon.core.model.FailureHandling as FailureHandling
+import com.kms.katalon.core.testcase.TestCase as TestCase
+import com.kms.katalon.core.testdata.TestData as TestData
+import com.kms.katalon.core.testng.keyword.TestNGBuiltinKeywords as TestNGKW
+import com.kms.katalon.core.testobject.TestObject as TestObject
+import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
+import internal.GlobalVariable as GlobalVariable
+import org.openqa.selenium.Keys as Keys
+
+// Login to the application first
+WebUI.callTestCase(findTestCase('TC_Login_001'), ['username':username, 'password':password], FailureHandling.STOP_ON_FAILURE)
+
+// Navigate through the main menu items
+// 1. Admin section
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Admin'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Admin/h6_Admin'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Admin/h6_Admin'), 5)
+WebUI.takeScreenshot('admin_page.png')
+
+// 2. PIM section
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_PIM'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_PIM/h6_PIM'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_PIM/h6_PIM'), 5)
+WebUI.takeScreenshot('pim_page.png')
+
+// 3. Leave section
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Leave'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Leave/h6_Leave'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Leave/h6_Leave'), 5)
+WebUI.takeScreenshot('leave_page.png')
+
+// 4. Time section
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Time'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Time/h6_Time'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Time/h6_Time'), 5)
+WebUI.takeScreenshot('time_page.png')
+
+// 5. Return to Dashboard
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Dashboard'))
+WebUI.waitForElementVisible(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/h6_Dashboard'), 10)
+WebUI.verifyElementPresent(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/h6_Dashboard'), 5)
+
+// Log out
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/span_User_Dropdown'))
+WebUI.waitForElementClickable(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Logout'), 5)
+WebUI.click(findTestObject('Object Repository/OrangeHRM/Page_Dashboard/a_Logout'))
+
+// Close browser
+WebUI.closeBrowser()
+```
+
+## Object Repository Files (.rs)
+
+### Login Page Objects (.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Username input field on login page</description>
+   <name>input_Username</name>
+   <tag></tag>
+   <elementGuidId>a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='username']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@placeholder='Username']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='username']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>11223344-5566-7788-99aa-bbccddeeff00</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>username</value>
+      <webElementGuid>aabbccdd-eeff-0011-2233-445566778899</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Username</value>
+      <webElementGuid>00112233-4455-6677-8899-aabbccddeeff</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field on login page</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>f1e2d3c4-b5a6-9s8d-7f6e-5d4c3b2a1z0y</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='password']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@placeholder='Password']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>12345678-9abc-def0-1234-56789abcdef0</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>abcdef01-2345-6789-abcd-ef0123456789</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>fedcba98-7654-3210-fedc-ba9876543210</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>placeholder</name>
+      <type>Main</type>
+      <value>Password</value>
+      <webElementGuid>abcdef12-3456-7890-abcd-ef1234567890</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Login button on login page</description>
+   <name>button_Login</name>
+   <tag></tag>
+   <elementGuidId>a9b8c7d6-e5f4-g3h2-i1j0-k9l8m7n6o5p4</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//button[@type='submit']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//button[contains(normalize-space(), 'Login')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>button.orangehrm-login-button</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>button</value>
+      <webElementGuid>a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>submit</value>
+      <webElementGuid>q1w2e3r4-t5y6-u7i8-o9p0-a1s2d3f4g5h6</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Login</value>
+      <webElementGuid>z1x2c3v4-b5n6-m7k8-j9h0-g1f2d3s4a5p6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Dashboard Page Objects (.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Dashboard heading to verify successful login</description>
+   <name>h6_Dashboard</name>
+   <tag></tag>
+   <elementGuidId>h1g2f3d4-s5a6-p7o8-i9u0-y1t2r3e4w5q6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//h6[text()='Dashboard']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//h6[contains(normalize-space(), 'Dashboard')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>h6.oxd-text.oxd-text--h6.oxd-topbar-header-breadcrumb-module</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>h6</value>
+      <webElementGuid>q9w8e7r6-t5y4-u3i2-o1p0-z9x8c7v6b5n4</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Dashboard</value>
+      <webElementGuid>a1s2d3f4-g5h6-j7k8-l9z0-x1c2v3b4n5m6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>User dropdown in header for logout</description>
+   <name>span_User_Dropdown</name>
+   <tag></tag>
+   <elementGuidId>c1l2a3s4-t5m6-e7n8-u9i0-l1o2g3i4n5id</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//li[@class='oxd-userdropdown']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[@class='oxd-userdropdown-tab']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>span.oxd-userdropdown-tab</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>CSS</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>span</value>
+      <webElementGuid>z9x8c7v6-b5n4-m3k2-l1j0-h9g8f7d6s5a4</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>class</name>
+      <type>Main</type>
+      <value>oxd-userdropdown-tab</value>
+      <webElementGuid>p1o2i3u4-y5t6-r7e8-w9q0-a1s2d3f4g5h6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Logout link in user dropdown</description>
+   <name>a_Logout</name>
+   <tag></tag>
+   <elementGuidId>l1o2g3o4-u5t6-i7d8-e9n0-t1i2f3i4e5r6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[text()='Logout']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//a[contains(text(), 'Logout')]</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-userdropdown-link:last-child</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>q1w2e3r4-t5y6-u7i8-o9p0-z9x8c7v6b5n4</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Logout</value>
+      <webElementGuid>a1s2d3f4-g5h6-j7k8-l9z0-q1w2e3r4t5y6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+### Navigation Menu Objects (.rs)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Admin menu item</description>
+   <name>a_Admin</name>
+   <tag></tag>
+   <elementGuidId>a1d2m3i4-n5l6-i7n8-k9m0-e1n2u3i4t5e6m</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(@href, '/admin/viewAdminModule')]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[text()='Admin']/parent::a</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-main-menu-item[href*='viewAdminModule']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Admin</value>
+      <webElementGuid>q1w2e3r4-t5y6-u7i8-o9p0-a1s2d3f4g5h6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>PIM menu item</description>
+   <name>a_PIM</name>
+   <tag></tag>
+   <elementGuidId>p1i2m3m4-e5n6-u7i8-t9e0-m1i2d3e4n5t6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(@href, '/pim/viewPimModule')]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[text()='PIM']/parent::a</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-main-menu-item[href*='viewPimModule']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>p1i2m3i4-d5e6-n7t8-i9f0-i1e2r3p4i5m6</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>PIM</value>
+      <webElementGuid>p1i2m3t4-e5x6-t7p8-i9m0-i1d2e3n4t5i6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Leave menu item</description>
+   <name>a_Leave</name>
+   <tag></tag>
+   <elementGuidId>l1e2a3v4-e5m6-e7n8-u9i0-t1e2m3i4d5e6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(@href, '/leave/viewLeaveModule')]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[text()='Leave']/parent::a</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.oxd-main-menu-item[href*='viewLeaveModule']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>a</value>
+      <webElementGuid>l1e2a3v4-e5i6-d7e8-n9t0-l1e2a3v4e5i6</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>contains</matchCondition>
+      <name>text</name>
+      <type>Main</type>
+      <value>Leave</value>
+      <webElementGuid>l1e2a3v4-e5t6-e7x8-t9l0-e1a2v3e4i5d6</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Time menu item</description>
+   <name>a_Time</name>
+   <tag></tag>
+   <elementGuidId>t1i2m3e4-m5e6-n7u8-i9t0-e1m2i3d4e5n6</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//a[contains(@href, '/time/viewTimeModule')]</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//span[text()='Time']/parent::a</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>a.ox
