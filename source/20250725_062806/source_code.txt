@@ -1,0 +1,965 @@
+// src/components/ApplicationForm/LoanApplicationForm.js
+import React, { useState, useEffect } from 'react';
+import LoanTypeSelector from './LoanTypeSelector';
+import PersonalInformationForm from './PersonalInformationForm';
+import FinancialInformationForm from './FinancialInformationForm';
+import DocumentUploader from './DocumentUploader';
+import ApplicationReview from './ApplicationReview';
+import SubmissionConfirmation from './SubmissionConfirmation';
+import ProgressIndicator from '../Common/ProgressIndicator';
+import ValidationService from '../../services/ValidationService';
+import ApplicationService from '../../services/ApplicationService';
+import NotificationService from '../../services/NotificationService';
+import LoadingSpinner from '../Common/LoadingSpinner';
+
+const LoanApplicationForm = ({ onSubmit, onSaveDraft, initialData, availableProducts }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [applicationId, setApplicationId] = useState(null);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [applicationData, setApplicationData] = useState({
+    applicant: {
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      dateOfBirth: '',
+      ssn: '',
+      email: '',
+      phone: '',
+      address: {
+        line1: '',
+        line2: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: 'US',
+      },
+    },
+    loanDetails: {
+      productType: '',
+      amount: 0,
+      term: 0,
+      purpose: '',
+    },
+    financialInfo: {
+      employmentStatus: '',
+      employerName: '',
+      jobTitle: '',
+      yearsEmployed: 0,
+      monthlyIncome: 0,
+      additionalIncome: 0,
+      additionalIncomeSource: '',
+      existingDebts: [],
+    },
+    documents: [],
+    consentFlags: {
+      creditCheck: false,
+      bankAccountAnalysis: false,
+      privacyPolicy: false,
+      termsOfService: false,
+    },
+  });
+
+  const steps = [
+    'Loan Type',
+    'Personal Information',
+    'Financial Information',
+    'Documents',
+    'Review',
+    'Confirmation',
+  ];
+
+  useEffect(() => {
+    // Initialize with initial data if provided
+    if (initialData) {
+      setApplicationData({ ...applicationData, ...initialData });
+      if (initialData.id) {
+        setApplicationId(initialData.id);
+      }
+    } else {
+      // Create a new application draft
+      createApplicationDraft();
+    }
+  }, [initialData]);
+
+  const createApplicationDraft = async () => {
+    try {
+      setIsSavingDraft(true);
+      const response = await ApplicationService.createApplication({});
+      setApplicationId(response.applicationId);
+      setIsSavingDraft(false);
+    } catch (error) {
+      NotificationService.showError('Failed to create application draft', error);
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!applicationId) return;
+
+    try {
+      setIsSavingDraft(true);
+      await ApplicationService.updateApplication(applicationId, applicationData);
+      NotificationService.showSuccess('Application draft saved successfully');
+      if (onSaveDraft) {
+        onSaveDraft(applicationData);
+      }
+      setIsSavingDraft(false);
+    } catch (error) {
+      NotificationService.showError('Failed to save application draft', error);
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleNext = async () => {
+    let errors = [];
+    
+    // Validate current step
+    switch (currentStep) {
+      case 0: // Loan Type
+        errors = ValidationService.validateApplicationData(
+          applicationData,
+          applicationData.loanDetails.productType,
+          'loanDetails'
+        );
+        break;
+      case 1: // Personal Information
+        errors = ValidationService.validateApplicationData(
+          applicationData,
+          applicationData.loanDetails.productType,
+          'personal'
+        );
+        break;
+      case 2: // Financial Information
+        errors = ValidationService.validateApplicationData(
+          applicationData,
+          applicationData.loanDetails.productType,
+          'financial'
+        );
+        break;
+      case 3: // Documents
+        errors = ValidationService.validateApplicationData(
+          applicationData,
+          applicationData.loanDetails.productType,
+          'documents'
+        );
+        break;
+      case 4: // Review
+        errors = ValidationService.validateApplicationData(
+          applicationData,
+          applicationData.loanDetails.productType,
+          'submission'
+        );
+        break;
+      default:
+        break;
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    // Clear validation errors
+    setValidationErrors([]);
+
+    // Save current progress as draft before moving to next step
+    await handleSaveDraft();
+
+    // Move to the next step
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Validate all data before final submission
+    const errors = ValidationService.validateApplicationData(
+      applicationData,
+      applicationData.loanDetails.productType,
+      'submission'
+    );
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await ApplicationService.submitApplication(applicationId);
+      NotificationService.showSuccess('Application submitted successfully');
+      
+      // Move to confirmation step
+      setCurrentStep(5);
+      
+      if (onSubmit) {
+        onSubmit(applicationData);
+      }
+      
+      setIsSubmitting(false);
+    } catch (error) {
+      NotificationService.showError('Failed to submit application', error);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFieldChange = (sectionName, fieldName, value) => {
+    setApplicationData((prevData) => ({
+      ...prevData,
+      [sectionName]: {
+        ...prevData[sectionName],
+        [fieldName]: value,
+      },
+    }));
+  };
+
+  const handleNestedFieldChange = (sectionName, nestedSection, fieldName, value) => {
+    setApplicationData((prevData) => ({
+      ...prevData,
+      [sectionName]: {
+        ...prevData[sectionName],
+        [nestedSection]: {
+          ...prevData[sectionName][nestedSection],
+          [fieldName]: value,
+        },
+      },
+    }));
+  };
+
+  const handleDocumentUploaded = (documentInfo) => {
+    setApplicationData((prevData) => ({
+      ...prevData,
+      documents: [...prevData.documents, documentInfo],
+    }));
+  };
+
+  const handleDocumentRemoved = (documentId) => {
+    setApplicationData((prevData) => ({
+      ...prevData,
+      documents: prevData.documents.filter((doc) => doc.id !== documentId),
+    }));
+  };
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <LoanTypeSelector
+            loanDetails={applicationData.loanDetails}
+            availableProducts={availableProducts}
+            onChange={(fieldName, value) => handleFieldChange('loanDetails', fieldName, value)}
+            errors={validationErrors.filter(error => error.field.startsWith('loanDetails'))}
+          />
+        );
+      case 1:
+        return (
+          <PersonalInformationForm
+            applicant={applicationData.applicant}
+            onChange={(fieldName, value) => handleFieldChange('applicant', fieldName, value)}
+            onAddressChange={(fieldName, value) => handleNestedFieldChange('applicant', 'address', fieldName, value)}
+            errors={validationErrors.filter(error => error.field.startsWith('applicant'))}
+          />
+        );
+      case 2:
+        return (
+          <FinancialInformationForm
+            financialInfo={applicationData.financialInfo}
+            onChange={(fieldName, value) => handleFieldChange('financialInfo', fieldName, value)}
+            onDebtChange={(debts) => handleFieldChange('financialInfo', 'existingDebts', debts)}
+            errors={validationErrors.filter(error => error.field.startsWith('financialInfo'))}
+          />
+        );
+      case 3:
+        return (
+          <DocumentUploader
+            requiredDocuments={getRequiredDocumentsForLoanType(applicationData.loanDetails.productType)}
+            existingDocuments={applicationData.documents}
+            onDocumentUploaded={handleDocumentUploaded}
+            onDocumentRemoved={handleDocumentRemoved}
+            applicationId={applicationId}
+            errors={validationErrors.filter(error => error.field.startsWith('documents'))}
+          />
+        );
+      case 4:
+        return (
+          <ApplicationReview
+            applicationData={applicationData}
+            onConsentChange={(consentType, value) => {
+              setApplicationData((prevData) => ({
+                ...prevData,
+                consentFlags: {
+                  ...prevData.consentFlags,
+                  [consentType]: value,
+                },
+              }));
+            }}
+            errors={validationErrors}
+          />
+        );
+      case 5:
+        return (
+          <SubmissionConfirmation
+            applicationId={applicationId}
+            applicantName={`${applicationData.applicant.firstName} ${applicationData.applicant.lastName}`}
+            productType={applicationData.loanDetails.productType}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Helper function to determine required documents based on loan type
+  const getRequiredDocumentsForLoanType = (loanType) => {
+    const commonDocuments = [
+      {
+        type: 'ID_PROOF',
+        label: 'Identification Document',
+        description: 'Government issued ID (passport, driver\'s license)',
+        isRequired: true,
+        maxCount: 1,
+      },
+      {
+        type: 'INCOME_VERIFICATION',
+        label: 'Proof of Income',
+        description: 'Recent pay stubs, tax returns, or bank statements',
+        isRequired: true,
+        maxCount: 3,
+      },
+    ];
+
+    switch (loanType) {
+      case 'MORTGAGE':
+        return [
+          ...commonDocuments,
+          {
+            type: 'PROPERTY_DOCUMENT',
+            label: 'Property Information',
+            description: 'Property assessment, purchase agreement',
+            isRequired: true,
+            maxCount: 2,
+          },
+          {
+            type: 'BANK_STATEMENT',
+            label: 'Bank Statements',
+            description: 'Last 3 months of bank statements',
+            isRequired: true,
+            maxCount: 3,
+          },
+        ];
+      case 'AUTO':
+        return [
+          ...commonDocuments,
+          {
+            type: 'VEHICLE_DOCUMENT',
+            label: 'Vehicle Information',
+            description: 'Vehicle details, purchase agreement',
+            isRequired: true,
+            maxCount: 2,
+          },
+        ];
+      case 'PERSONAL':
+      default:
+        return commonDocuments;
+    }
+  };
+
+  if (!applicationId && !initialData) {
+    return <LoadingSpinner message="Initializing application..." />;
+  }
+
+  return (
+    <div className="loan-application-form">
+      <ProgressIndicator
+        steps={steps}
+        currentStep={currentStep}
+        onStepClick={(step) => currentStep > step && setCurrentStep(step)}
+      />
+
+      {renderCurrentStep()}
+
+      {currentStep < 5 && (
+        <div className="form-actions">
+          {currentStep > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handlePrevious}
+              disabled={isSubmitting || isSavingDraft}
+            >
+              Previous
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-outline-primary"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting || isSavingDraft}
+          >
+            {isSavingDraft ? (
+              <>
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Saving...
+              </>
+            ) : (
+              'Save Draft'
+            )}
+          </button>
+
+          {currentStep < 4 ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleNext}
+              disabled={isSubmitting || isSavingDraft}
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-success"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isSavingDraft}
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Submitting...
+                </>
+              ) : (
+                'Submit Application'
+              )}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LoanApplicationForm;
+
+// src/components/ApplicationForm/LoanTypeSelector.js
+import React from 'react';
+import TextInput from '../Common/FormControls/TextInput';
+import SelectInput from '../Common/FormControls/SelectInput';
+import CurrencyInput from '../Common/FormControls/CurrencyInput';
+import ValidationMessage from '../Common/ValidationMessage';
+
+const LoanTypeSelector = ({ loanDetails, availableProducts, onChange, errors }) => {
+  const getErrorMessage = (fieldName) => {
+    const error = errors.find((e) => e.field === `loanDetails.${fieldName}`);
+    return error ? error.message : '';
+  };
+
+  const handleChange = (name, value) => {
+    onChange(name, value);
+  };
+
+  // Format available products for select options
+  const productOptions = availableProducts.map(product => ({
+    value: product.type,
+    label: product.name
+  }));
+
+  // Get term options based on selected product type
+  const getTermOptions = (productType) => {
+    const product = availableProducts.find(p => p.type === productType);
+    if (!product) return [];
+    
+    return product.availableTerms.map(term => ({
+      value: term.months,
+      label: term.months === 12 ? '1 year' : 
+             term.months < 12 ? `${term.months} months` :
+             `${term.months / 12} years`
+    }));
+  };
+
+  // Get purpose options based on selected product type
+  const getPurposeOptions = (productType) => {
+    const product = availableProducts.find(p => p.type === productType);
+    if (!product) return [];
+    
+    return product.allowedPurposes.map(purpose => ({
+      value: purpose.code,
+      label: purpose.description
+    }));
+  };
+
+  return (
+    <div className="loan-type-selector">
+      <h2>Loan Information</h2>
+      <p className="text-muted">Please select the type of loan you're interested in and provide basic loan details.</p>
+      
+      <div className="row">
+        <div className="col-md-6">
+          <SelectInput
+            label="Loan Product"
+            id="productType"
+            name="productType"
+            value={loanDetails.productType}
+            options={productOptions}
+            onChange={(e) => handleChange('productType', e.target.value)}
+            required
+            error={getErrorMessage('productType')}
+          />
+        </div>
+      </div>
+
+      {loanDetails.productType && (
+        <>
+          <div className="row">
+            <div className="col-md-6">
+              <CurrencyInput
+                label="Loan Amount"
+                id="amount"
+                name="amount"
+                value={loanDetails.amount}
+                onChange={(value) => handleChange('amount', value)}
+                required
+                error={getErrorMessage('amount')}
+              />
+            </div>
+            <div className="col-md-6">
+              <SelectInput
+                label="Loan Term"
+                id="term"
+                name="term"
+                value={loanDetails.term}
+                options={getTermOptions(loanDetails.productType)}
+                onChange={(e) => handleChange('term', parseInt(e.target.value, 10))}
+                required
+                error={getErrorMessage('term')}
+              />
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-md-6">
+              <SelectInput
+                label="Loan Purpose"
+                id="purpose"
+                name="purpose"
+                value={loanDetails.purpose}
+                options={getPurposeOptions(loanDetails.productType)}
+                onChange={(e) => handleChange('purpose', e.target.value)}
+                required
+                error={getErrorMessage('purpose')}
+              />
+            </div>
+          </div>
+        </>
+      )}
+      
+      {errors.length > 0 && errors.some(e => !e.field.includes('.')) && (
+        <ValidationMessage message="Please correct the errors before proceeding." />
+      )}
+    </div>
+  );
+};
+
+export default LoanTypeSelector;
+
+// src/components/ApplicationForm/PersonalInformationForm.js
+import React from 'react';
+import TextInput from '../Common/FormControls/TextInput';
+import DatePicker from '../Common/FormControls/DatePicker';
+import PhoneInput from '../Common/FormControls/PhoneInput';
+import SSNInput from '../Common/FormControls/SSNInput';
+import SelectInput from '../Common/FormControls/SelectInput';
+import ValidationMessage from '../Common/ValidationMessage';
+
+const PersonalInformationForm = ({ applicant, onChange, onAddressChange, errors }) => {
+  const getErrorMessage = (fieldName) => {
+    const error = errors.find((e) => e.field === `applicant.${fieldName}`);
+    return error ? error.message : '';
+  };
+
+  const getAddressErrorMessage = (fieldName) => {
+    const error = errors.find((e) => e.field === `applicant.address.${fieldName}`);
+    return error ? error.message : '';
+  };
+
+  // US states for select options
+  const stateOptions = [
+    { value: 'AL', label: 'Alabama' },
+    { value: 'AK', label: 'Alaska' },
+    { value: 'AZ', label: 'Arizona' },
+    // Add all states here
+    { value: 'WY', label: 'Wyoming' }
+  ];
+
+  return (
+    <div className="personal-information-form">
+      <h2>Personal Information</h2>
+      <p className="text-muted">Please provide your personal details and contact information.</p>
+
+      <div className="row">
+        <div className="col-md-4">
+          <TextInput
+            label="First Name"
+            id="firstName"
+            name="firstName"
+            value={applicant.firstName}
+            onChange={(e) => onChange('firstName', e.target.value)}
+            required
+            error={getErrorMessage('firstName')}
+          />
+        </div>
+        <div className="col-md-4">
+          <TextInput
+            label="Middle Name"
+            id="middleName"
+            name="middleName"
+            value={applicant.middleName}
+            onChange={(e) => onChange('middleName', e.target.value)}
+            error={getErrorMessage('middleName')}
+          />
+        </div>
+        <div className="col-md-4">
+          <TextInput
+            label="Last Name"
+            id="lastName"
+            name="lastName"
+            value={applicant.lastName}
+            onChange={(e) => onChange('lastName', e.target.value)}
+            required
+            error={getErrorMessage('lastName')}
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="col-md-6">
+          <DatePicker
+            label="Date of Birth"
+            id="dateOfBirth"
+            name="dateOfBirth"
+            value={applicant.dateOfBirth}
+            onChange={(value) => onChange('dateOfBirth', value)}
+            required
+            error={getErrorMessage('dateOfBirth')}
+            maxDate={new Date()}
+          />
+        </div>
+        <div className="col-md-6">
+          <SSNInput
+            label="Social Security Number"
+            id="ssn"
+            name="ssn"
+            value={applicant.ssn}
+            onChange={(value) => onChange('ssn', value)}
+            required
+            error={getErrorMessage('ssn')}
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="col-md-6">
+          <TextInput
+            label="Email"
+            id="email"
+            name="email"
+            type="email"
+            value={applicant.email}
+            onChange={(e) => onChange('email', e.target.value)}
+            required
+            error={getErrorMessage('email')}
+          />
+        </div>
+        <div className="col-md-6">
+          <PhoneInput
+            label="Phone Number"
+            id="phone"
+            name="phone"
+            value={applicant.phone}
+            onChange={(value) => onChange('phone', value)}
+            required
+            error={getErrorMessage('phone')}
+          />
+        </div>
+      </div>
+
+      <h3 className="mt-4">Current Address</h3>
+
+      <div className="row">
+        <div className="col-md-6">
+          <TextInput
+            label="Street Address"
+            id="line1"
+            name="line1"
+            value={applicant.address.line1}
+            onChange={(e) => onAddressChange('line1', e.target.value)}
+            required
+            error={getAddressErrorMessage('line1')}
+          />
+        </div>
+        <div className="col-md-6">
+          <TextInput
+            label="Apt/Suite/Unit (Optional)"
+            id="line2"
+            name="line2"
+            value={applicant.address.line2}
+            onChange={(e) => onAddressChange('line2', e.target.value)}
+            error={getAddressErrorMessage('line2')}
+          />
+        </div>
+      </div>
+
+      <div className="row">
+        <div className="col-md-4">
+          <TextInput
+            label="City"
+            id="city"
+            name="city"
+            value={applicant.address.city}
+            onChange={(e) => onAddressChange('city', e.target.value)}
+            required
+            error={getAddressErrorMessage('city')}
+          />
+        </div>
+        <div className="col-md-4">
+          <SelectInput
+            label="State"
+            id="state"
+            name="state"
+            value={applicant.address.state}
+            options={stateOptions}
+            onChange={(e) => onAddressChange('state', e.target.value)}
+            required
+            error={getAddressErrorMessage('state')}
+          />
+        </div>
+        <div className="col-md-4">
+          <TextInput
+            label="ZIP Code"
+            id="zipCode"
+            name="zipCode"
+            value={applicant.address.zipCode}
+            onChange={(e) => onAddressChange('zipCode', e.target.value)}
+            required
+            error={getAddressErrorMessage('zipCode')}
+          />
+        </div>
+      </div>
+      
+      {errors.length > 0 && errors.some(e => !e.field.includes('.')) && (
+        <ValidationMessage message="Please correct the errors before proceeding." />
+      )}
+    </div>
+  );
+};
+
+export default PersonalInformationForm;
+
+// src/components/ApplicationForm/FinancialInformationForm.js
+import React, { useState } from 'react';
+import TextInput from '../Common/FormControls/TextInput';
+import CurrencyInput from '../Common/FormControls/CurrencyInput';
+import SelectInput from '../Common/FormControls/SelectInput';
+import ValidationMessage from '../Common/ValidationMessage';
+
+const FinancialInformationForm = ({ financialInfo, onChange, onDebtChange, errors }) => {
+  const [showAddDebtForm, setShowAddDebtForm] = useState(false);
+  const [newDebt, setNewDebt] = useState({
+    type: '',
+    lender: '',
+    currentBalance: 0,
+    monthlyPayment: 0,
+  });
+
+  const getErrorMessage = (fieldName) => {
+    const error = errors.find((e) => e.field === `financialInfo.${fieldName}`);
+    return error ? error.message : '';
+  };
+
+  const handleNewDebtChange = (field, value) => {
+    setNewDebt({
+      ...newDebt,
+      [field]: value,
+    });
+  };
+
+  const handleAddDebt = () => {
+    if (!newDebt.type || newDebt.currentBalance <= 0 || newDebt.monthlyPayment <= 0) {
+      return; // Basic validation
+    }
+
+    const updatedDebts = [...financialInfo.existingDebts, { ...newDebt, id: Date.now().toString() }];
+    onDebtChange(updatedDebts);
+    
+    // Reset form
+    setNewDebt({
+      type: '',
+      lender: '',
+      currentBalance: 0,
+      monthlyPayment: 0,
+    });
+    setShowAddDebtForm(false);
+  };
+
+  const handleRemoveDebt = (debtId) => {
+    const updatedDebts = financialInfo.existingDebts.filter((debt) => debt.id !== debtId);
+    onDebtChange(updatedDebts);
+  };
+
+  const employmentStatusOptions = [
+    { value: 'FULL_TIME', label: 'Full Time' },
+    { value: 'PART_TIME', label: 'Part Time' },
+    { value: 'SELF_EMPLOYED', label: 'Self Employed' },
+    { value: 'RETIRED', label: 'Retired' },
+    { value: 'STUDENT', label: 'Student' },
+    { value: 'UNEMPLOYED', label: 'Unemployed' },
+  ];
+
+  const debtTypeOptions = [
+    { value: 'CREDIT_CARD', label: 'Credit Card' },
+    { value: 'MORTGAGE', label: 'Mortgage' },
+    { value: 'AUTO_LOAN', label: 'Auto Loan' },
+    { value: 'STUDENT_LOAN', label: 'Student Loan' },
+    { value: 'PERSONAL_LOAN', label: 'Personal Loan' },
+    { value: 'OTHER', label: 'Other' },
+  ];
+
+  const isEmployed = ['FULL_TIME', 'PART_TIME', 'SELF_EMPLOYED'].includes(financialInfo.employmentStatus);
+
+  return (
+    <div className="financial-information-form">
+      <h2>Financial Information</h2>
+      <p className="text-muted">Please provide details about your employment and financial situation.</p>
+
+      <h3>Employment Information</h3>
+      <div className="row">
+        <div className="col-md-6">
+          <SelectInput
+            label="Employment Status"
+            id="employmentStatus"
+            name="employmentStatus"
+            value={financialInfo.employmentStatus}
+            options={employmentStatusOptions}
+            onChange={(e) => onChange('employmentStatus', e.target.value)}
+            required
+            error={getErrorMessage('employmentStatus')}
+          />
+        </div>
+      </div>
+
+      {isEmployed && (
+        <>
+          <div className="row">
+            <div className="col-md-6">
+              <TextInput
+                label="Employer Name"
+                id="employerName"
+                name="employerName"
+                value={financialInfo.employerName}
+                onChange={(e) => onChange('employerName', e.target.value)}
+                required={isEmployed}
+                error={getErrorMessage('employerName')}
+              />
+            </div>
+            <div className="col-md-6">
+              <TextInput
+                label="Job Title"
+                id="jobTitle"
+                name="jobTitle"
+                value={financialInfo.jobTitle}
+                onChange={(e) => onChange('jobTitle', e.target.value)}
+                required={isEmployed}
+                error={getErrorMessage('jobTitle')}
+              />
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-md-6">
+              <TextInput
+                label="Years Employed"
+                id="yearsEmployed"
+                name="yearsEmployed"
+                type="number"
+                min="0"
+                step="0.1"
+                value={financialInfo.yearsEmployed}
+                onChange={(e) => onChange('yearsEmployed', parseFloat(e.target.value) || 0)}
+                required={isEmployed}
+                error={getErrorMessage('yearsEmployed')}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      <h3 className="mt-4">Income Information</h3>
+      <div className="row">
+        <div className="col-md-6">
+          <CurrencyInput
+            label="Monthly Income"
+            id="monthlyIncome"
+            name="monthlyIncome"
+            value={financialInfo.monthlyIncome}
+            onChange={(value) => onChange('monthlyIncome', value)}
+            required
+            error={getErrorMessage('monthlyIncome')}
+          />
+        </div>
+        <div className="col-md-6">
+          <CurrencyInput
+            label="Additional Monthly Income (Optional)"
+            id="additionalIncome"
+            name="additionalIncome"
+            value={financialInfo.additionalIncome}
+            onChange={(value) => onChange('additionalIncome', value)}
+            error={getErrorMessage('additionalIncome')}
+          />
+        </div>
+      </div>
+
+      {financialInfo.additionalIncome > 0 && (
+        <div className="row">
+          <div className="col-md-6">
+            <TextInput
+              label="Source of Additional Income"
+              id="additionalIncomeSource"
+              name="additionalIncomeSource"
+              value={financialInfo.additionalIncomeSource}
+              onChange={(e) => onChange('additionalIncomeSource', e.target.value)}
+              required={financialInfo.additionalIncome > 0}
+              error={getErrorMessage('additionalIncomeSource')}
+            />
+          </div>
+        </div>
+      )}
+
+      <h3 className="mt-4">Existing Debts</h3>
+      {financialInfo.existingDebts.length > 0 ? (
+        <div className="table-responsive mb-3">
+          <table className="table table-striped">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Lender</th>
+                <th>Current Balance</th>
+                <th>Monthly Payment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {financialInfo.existingDebts.map((debt) => (
+                <tr key={debt.id}>
+                  <td>{debtTypeOptions.find(option => option.value === debt.type)?.label || debt.type}</td>
+                  <td>{debt.lender}</td>
+                  <td>${debt.currentBalance.toLocaleString()}</td>
+                  <td>${debt.monthlyPayment.toLocaleString()
