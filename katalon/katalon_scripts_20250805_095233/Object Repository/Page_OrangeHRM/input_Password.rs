@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebElementEntity>
+   <description>Password input field on login page</description>
+   <name>input_Password</name>
+   <tag></tag>
+   <elementGuidId>b2c3d4e5-f6g7-8901-bcde-f2g3h4i5j6k7</elementGuidId>
+   <selectorCollection>
+      <entry>
+         <key>BASIC</key>
+         <value>//input[@name='password']</value>
+      </entry>
+      <entry>
+         <key>CSS</key>
+         <value>input[name='password']</value>
+      </entry>
+      <entry>
+         <key>XPATH</key>
+         <value>//input[@name='password']</value>
+      </entry>
+   </selectorCollection>
+   <selectorMethod>XPATH</selectorMethod>
+   <useRalativeImagePath>false</useRalativeImagePath>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>tag</name>
+      <type>Main</type>
+      <value>input</value>
+      <webElementGuid>d4e5f6g7-8901-23cd-efgh-j4k5l6m7n8o9</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>name</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>e5f6g7h8-9012-34de-fghi-k5l6m7n8o9p0</webElementGuid>
+   </webElementProperties>
+   <webElementProperties>
+      <isSelected>true</isSelected>
+      <matchCondition>equals</matchCondition>
+      <name>type</name>
+      <type>Main</type>
+      <value>password</value>
+      <webElementGuid>f6g7h8i9-0123-45ef-ghij-l6m7n8o9p0q1</webElementGuid>
+   </webElementProperties>
+</WebElementEntity>
