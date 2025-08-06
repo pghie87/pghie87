@@ -1,0 +1,982 @@
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/domain/Invoice.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.domain;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.*;
+
+/**
+ * Core domain entity representing an Invoice in the Intelligent Invoice Management System.
+ * Contains all invoice details, status tracking, and relationships to related entities.
+ */
+@Entity
+@Table(name = "invoices")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Invoice {
+    @Id
+    @Column(name = "id")
+    private UUID id;
+    
+    @Column(name = "invoice_number", nullable = false)
+    private String invoiceNumber;
+    
+    @Column(name = "invoice_date", nullable = false)
+    private LocalDateTime invoiceDate;
+    
+    @Column(name = "client_id", nullable = false)
+    private UUID clientId;
+    
+    @Column(name = "vendor_id", nullable = false)
+    private UUID vendorId;
+    
+    @Column(name = "template_id")
+    private UUID templateId;
+    
+    @Column(name = "document_id", nullable = false)
+    private UUID documentId;
+    
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private InvoiceStatus status;
+    
+    @Column(name = "total_amount", precision = 19, scale = 4)
+    private BigDecimal totalAmount;
+    
+    @Column(name = "taxable_amount", precision = 19, scale = 4)
+    private BigDecimal taxableAmount;
+    
+    @Column(name = "currency", length = 3)
+    private String currency;
+    
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @Column(name = "processed_at")
+    private LocalDateTime processedAt;
+    
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "invoice")
+    private List<InvoiceField> fields = new ArrayList<>();
+    
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "invoice")
+    private List<TaxEntry> taxEntries = new ArrayList<>();
+    
+    @Column(name = "workflow_id")
+    private UUID workflowId;
+    
+    @Column(name = "workflow_status")
+    private String workflowStatus;
+    
+    @Column(name = "error_code")
+    private String errorCode;
+    
+    @Column(name = "error_description")
+    private String errorDescription;
+    
+    /**
+     * Enum representing the possible statuses of an invoice in the processing lifecycle.
+     */
+    public enum InvoiceStatus {
+        DRAFT, PROCESSING, VALIDATED, APPROVED, REJECTED, FINALIZED
+    }
+    
+    /**
+     * Determines if the invoice is valid based on all required fields having valid values.
+     * 
+     * @return true if all required fields are valid, false otherwise
+     */
+    public boolean isValid() {
+        if (fields == null || fields.isEmpty()) {
+            return false;
+        }
+        
+        return fields.stream()
+            .filter(InvoiceField::isRequired)
+            .allMatch(field -> field.getValidationStatus() == InvoiceField.ValidationStatus.VALID);
+    }
+    
+    /**
+     * Calculates invoice totals based on line items and taxes.
+     * Updates the totalAmount and taxableAmount fields.
+     */
+    public void calculateTotals() {
+        if (taxEntries == null || taxEntries.isEmpty()) {
+            return;
+        }
+        
+        // Calculate taxable amount
+        this.taxableAmount = taxEntries.stream()
+            .map(TaxEntry::getTaxableAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Calculate tax amounts
+        BigDecimal totalTaxAmount = taxEntries.stream()
+            .map(TaxEntry::getTaxAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Calculate total amount (taxable + tax)
+        this.totalAmount = this.taxableAmount.add(totalTaxAmount);
+    }
+    
+    /**
+     * Adds a field to the invoice and sets up the bidirectional relationship.
+     * 
+     * @param field the field to add to this invoice
+     * @return the updated invoice instance
+     */
+    public Invoice addField(InvoiceField field) {
+        if (field == null) {
+            return this;
+        }
+        
+        if (this.fields == null) {
+            this.fields = new ArrayList<>();
+        }
+        
+        field.setInvoice(this);
+        this.fields.add(field);
+        return this;
+    }
+    
+    /**
+     * Adds a tax entry to the invoice and sets up the bidirectional relationship.
+     * 
+     * @param taxEntry the tax entry to add to this invoice
+     * @return the updated invoice instance
+     */
+    public Invoice addTaxEntry(TaxEntry taxEntry) {
+        if (taxEntry == null) {
+            return this;
+        }
+        
+        if (this.taxEntries == null) {
+            this.taxEntries = new ArrayList<>();
+        }
+        
+        taxEntry.setInvoice(this);
+        this.taxEntries.add(taxEntry);
+        return this;
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/domain/InvoiceField.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.domain;
+
+import java.util.UUID;
+import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+
+import javax.persistence.*;
+
+/**
+ * Represents a field extracted from an invoice document with validation status.
+ * Maps to specific template field definitions and stores the extracted values.
+ */
+@Entity
+@Table(name = "invoice_fields")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvoiceField {
+    @Id
+    @Column(name = "id")
+    private UUID id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id")
+    private Invoice invoice;
+    
+    @Column(name = "template_field_id")
+    private UUID templateFieldId;
+    
+    @Column(name = "name", nullable = false)
+    private String name;
+    
+    @Column(name = "value")
+    private String value;
+    
+    @Column(name = "extraction_confidence")
+    private float extractionConfidence;
+    
+    @Column(name = "validation_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ValidationStatus validationStatus;
+    
+    @Column(name = "validation_message")
+    private String validationMessage;
+    
+    @Column(name = "required", nullable = false)
+    private boolean required;
+    
+    /**
+     * Enum defining possible validation states for an invoice field.
+     */
+    public enum ValidationStatus {
+        VALID, INVALID, MANUAL_REVIEW
+    }
+    
+    /**
+     * Utility method to mark a field as valid.
+     */
+    public void markValid() {
+        this.validationStatus = ValidationStatus.VALID;
+        this.validationMessage = null;
+    }
+    
+    /**
+     * Utility method to mark a field as invalid with a specific message.
+     * 
+     * @param message the validation error message
+     */
+    public void markInvalid(String message) {
+        this.validationStatus = ValidationStatus.INVALID;
+        this.validationMessage = message;
+    }
+    
+    /**
+     * Utility method to mark a field for manual review with a specific reason.
+     * 
+     * @param reason the reason for requiring manual review
+     */
+    public void markForManualReview(String reason) {
+        this.validationStatus = ValidationStatus.MANUAL_REVIEW;
+        this.validationMessage = reason;
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/domain/TaxEntry.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.domain;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+
+import javax.persistence.*;
+
+/**
+ * Represents a tax entry associated with an invoice.
+ * Contains details about tax type, rate, and calculated amounts.
+ */
+@Entity
+@Table(name = "tax_entries")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TaxEntry {
+    @Id
+    @Column(name = "id")
+    private UUID id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id")
+    private Invoice invoice;
+    
+    @Column(name = "tax_type", nullable = false)
+    private String taxType;
+    
+    @Column(name = "tax_rate", precision = 5, scale = 2, nullable = false)
+    private BigDecimal taxRate;
+    
+    @Column(name = "taxable_amount", precision = 19, scale = 4, nullable = false)
+    private BigDecimal taxableAmount;
+    
+    @Column(name = "tax_amount", precision = 19, scale = 4, nullable = false)
+    private BigDecimal taxAmount;
+    
+    /**
+     * Recalculates the tax amount based on the current tax rate and taxable amount.
+     */
+    public void recalculateTaxAmount() {
+        if (taxRate != null && taxableAmount != null) {
+            this.taxAmount = taxableAmount.multiply(taxRate.divide(new BigDecimal("100")))
+                .setScale(4, BigDecimal.ROUND_HALF_UP);
+        }
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/repository/InvoiceRepository.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.testsdlc.iims.invoiceprocessing.domain.Invoice;
+
+/**
+ * Repository interface for Invoice entities providing CRUD operations and custom queries.
+ */
+@Repository
+public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
+    
+    /**
+     * Find all invoices with a specific status.
+     * 
+     * @param status the invoice status to filter by
+     * @return list of matching invoices
+     */
+    List<Invoice> findByStatus(Invoice.InvoiceStatus status);
+    
+    /**
+     * Find all invoices for a specific client.
+     * 
+     * @param clientId the client's UUID
+     * @return list of client's invoices
+     */
+    List<Invoice> findByClientId(UUID clientId);
+    
+    /**
+     * Find potential duplicate invoices based on invoice number and vendor.
+     * 
+     * @param invoiceNumber the invoice number to check
+     * @param vendorId the vendor's UUID
+     * @return list of potential duplicate invoices
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.invoiceNumber = :invoiceNumber AND i.vendorId = :vendorId")
+    List<Invoice> findPotentialDuplicates(
+        @Param("invoiceNumber") String invoiceNumber, 
+        @Param("vendorId") UUID vendorId);
+    
+    /**
+     * Find an invoice by its associated workflow ID.
+     * 
+     * @param workflowId the workflow's UUID
+     * @return the invoice associated with the workflow if found
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.workflowId = :workflowId")
+    Optional<Invoice> findByWorkflowId(@Param("workflowId") UUID workflowId);
+    
+    /**
+     * Find invoices created between specific dates.
+     * 
+     * @param clientId the client's UUID
+     * @param startDate the start date (inclusive)
+     * @param endDate the end date (inclusive)
+     * @return list of invoices in the date range
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.clientId = :clientId AND i.invoiceDate BETWEEN :startDate AND :endDate")
+    List<Invoice> findByClientIdAndDateRange(
+        @Param("clientId") UUID clientId,
+        @Param("startDate") java.time.LocalDateTime startDate,
+        @Param("endDate") java.time.LocalDateTime endDate);
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/client/DocumentClient.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.client;
+
+import java.util.UUID;
+
+/**
+ * Client interface for interacting with the Document Service.
+ * Provides methods to retrieve and update document content and status.
+ */
+public interface DocumentClient {
+    /**
+     * Retrieves the document content as a byte array from the Document Service.
+     * 
+     * @param documentId the UUID of the document to retrieve
+     * @return the document content as a byte array
+     * @throws DocumentServiceException if the document cannot be retrieved
+     */
+    byte[] getDocumentContent(UUID documentId);
+    
+    /**
+     * Updates the status of a document in the Document Service.
+     * 
+     * @param documentId the UUID of the document to update
+     * @param status the new status to set
+     * @throws DocumentServiceException if the document status cannot be updated
+     */
+    void updateDocumentStatus(UUID documentId, String status);
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/client/OcrClient.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.client;
+
+import java.util.List;
+import java.util.UUID;
+
+import com.testsdlc.iims.invoiceprocessing.domain.InvoiceField;
+
+/**
+ * Client interface for interacting with the OCR/ML Service.
+ * Provides methods for data extraction and template detection.
+ */
+public interface OcrClient {
+    /**
+     * Extracts data from document bytes using OCR and AI/ML capabilities.
+     * 
+     * @param documentBytes the document content as a byte array
+     * @return list of extracted invoice fields
+     * @throws OcrServiceException if data extraction fails
+     */
+    List<InvoiceField> extractData(byte[] documentBytes);
+    
+    /**
+     * Detects the appropriate template for a document.
+     * 
+     * @param documentBytes the document content as a byte array
+     * @return UUID of the detected template, or null if no template matches
+     * @throws OcrServiceException if template detection fails
+     */
+    UUID detectTemplate(byte[] documentBytes);
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/client/TaxComplianceClient.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.client;
+
+import java.util.List;
+
+import com.testsdlc.iims.invoiceprocessing.domain.Invoice;
+import com.testsdlc.iims.invoiceprocessing.domain.TaxEntry;
+
+/**
+ * Client interface for interacting with the Tax Compliance Service.
+ * Provides methods for tax calculations and validation.
+ */
+public interface TaxComplianceClient {
+    /**
+     * Calculates applicable taxes for an invoice based on its details.
+     * 
+     * @param invoice the invoice to calculate taxes for
+     * @return list of calculated tax entries
+     * @throws TaxComplianceException if tax calculation fails
+     */
+    List<TaxEntry> calculateTax(Invoice invoice);
+    
+    /**
+     * Validates a GST registration number (GSTIN).
+     * 
+     * @param gstin the GSTIN to validate
+     * @return true if the GSTIN is valid, false otherwise
+     * @throws TaxComplianceException if validation fails
+     */
+    boolean validateTaxRegistration(String gstin);
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/client/WorkflowClient.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.client;
+
+import java.util.UUID;
+
+import com.testsdlc.iims.invoiceprocessing.domain.Invoice;
+
+/**
+ * Client interface for interacting with the Workflow Service.
+ * Provides methods for workflow management and status tracking.
+ */
+public interface WorkflowClient {
+    /**
+     * Starts an approval workflow for an invoice.
+     * 
+     * @param invoice the invoice to start the workflow for
+     * @return UUID of the created workflow
+     * @throws WorkflowServiceException if workflow creation fails
+     */
+    UUID startApprovalWorkflow(Invoice invoice);
+    
+    /**
+     * Retrieves the current status of a workflow.
+     * 
+     * @param workflowId the UUID of the workflow to check
+     * @return the current workflow status
+     * @throws WorkflowServiceException if status retrieval fails
+     */
+    String getWorkflowStatus(UUID workflowId);
+    
+    /**
+     * Updates the status of a workflow.
+     * 
+     * @param workflowId the UUID of the workflow to update
+     * @param status the new status to set
+     * @throws WorkflowServiceException if status update fails
+     */
+    void updateWorkflowStatus(UUID workflowId, String status);
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/exception/InvoiceProcessingException.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.exception;
+
+import lombok.Getter;
+
+/**
+ * Exception thrown when invoice processing encounters an error.
+ * Includes an error code for categorization and client-side handling.
+ */
+@Getter
+public class InvoiceProcessingException extends RuntimeException {
+    private final String errorCode;
+    
+    /**
+     * Constructs a new invoice processing exception with the specified message and error code.
+     * 
+     * @param message the error message
+     * @param errorCode the error code
+     */
+    public InvoiceProcessingException(String message, String errorCode) {
+        super(message);
+        this.errorCode = errorCode;
+    }
+    
+    /**
+     * Constructs a new invoice processing exception with the specified message, cause, and error code.
+     * 
+     * @param message the error message
+     * @param cause the cause of the exception
+     * @param errorCode the error code
+     */
+    public InvoiceProcessingException(String message, Throwable cause, String errorCode) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/exception/DocumentServiceException.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.exception;
+
+/**
+ * Exception thrown when there's an error interacting with the Document Service.
+ */
+public class DocumentServiceException extends RuntimeException {
+    /**
+     * Constructs a new document service exception with the specified message.
+     * 
+     * @param message the error message
+     */
+    public DocumentServiceException(String message) {
+        super(message);
+    }
+    
+    /**
+     * Constructs a new document service exception with the specified message and cause.
+     * 
+     * @param message the error message
+     * @param cause the cause of the exception
+     */
+    public DocumentServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/exception/OcrServiceException.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.exception;
+
+/**
+ * Exception thrown when there's an error interacting with the OCR/ML Service.
+ */
+public class OcrServiceException extends RuntimeException {
+    /**
+     * Constructs a new OCR service exception with the specified message.
+     * 
+     * @param message the error message
+     */
+    public OcrServiceException(String message) {
+        super(message);
+    }
+    
+    /**
+     * Constructs a new OCR service exception with the specified message and cause.
+     * 
+     * @param message the error message
+     * @param cause the cause of the exception
+     */
+    public OcrServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/exception/TaxComplianceException.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.exception;
+
+/**
+ * Exception thrown when there's an error interacting with the Tax Compliance Service.
+ */
+public class TaxComplianceException extends RuntimeException {
+    /**
+     * Constructs a new tax compliance exception with the specified message.
+     * 
+     * @param message the error message
+     */
+    public TaxComplianceException(String message) {
+        super(message);
+    }
+    
+    /**
+     * Constructs a new tax compliance exception with the specified message and cause.
+     * 
+     * @param message the error message
+     * @param cause the cause of the exception
+     */
+    public TaxComplianceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/exception/WorkflowServiceException.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.exception;
+
+/**
+ * Exception thrown when there's an error interacting with the Workflow Service.
+ */
+public class WorkflowServiceException extends RuntimeException {
+    /**
+     * Constructs a new workflow service exception with the specified message.
+     * 
+     * @param message the error message
+     */
+    public WorkflowServiceException(String message) {
+        super(message);
+    }
+    
+    /**
+     * Constructs a new workflow service exception with the specified message and cause.
+     * 
+     * @param message the error message
+     * @param cause the cause of the exception
+     */
+    public WorkflowServiceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/InvoiceDto.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for Invoice entities.
+ * Used for API communication and serialization.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvoiceDto {
+    private UUID id;
+    private String invoiceNumber;
+    private LocalDateTime invoiceDate;
+    private UUID clientId;
+    private UUID vendorId;
+    private UUID templateId;
+    private UUID documentId;
+    private String status;
+    private BigDecimal totalAmount;
+    private BigDecimal taxableAmount;
+    private String currency;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime processedAt;
+    private List<InvoiceFieldDto> fields = new ArrayList<>();
+    private List<TaxEntryDto> taxEntries = new ArrayList<>();
+    private UUID workflowId;
+    private String workflowStatus;
+    private String errorCode;
+    private String errorDescription;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/InvoiceFieldDto.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for InvoiceField entities.
+ * Used for API communication and serialization.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvoiceFieldDto {
+    private UUID id;
+    private String name;
+    private String value;
+    private float extractionConfidence;
+    private String validationStatus;
+    private String validationMessage;
+    private boolean required;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/TaxEntryDto.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for TaxEntry entities.
+ * Used for API communication and serialization.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TaxEntryDto {
+    private UUID id;
+    private String taxType;
+    private BigDecimal taxRate;
+    private BigDecimal taxableAmount;
+    private BigDecimal taxAmount;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/BatchProcessingRequest.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.util.List;
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for batch invoice processing requests.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BatchProcessingRequest {
+    private List<UUID> documentIds;
+    private UUID clientId;
+    private UUID templateId;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/BatchProcessingResponse.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.util.List;
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for batch processing results.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BatchProcessingResponse {
+    private UUID batchId;
+    private int totalDocuments;
+    private int processedDocuments;
+    private int successfulDocuments;
+    private int failedDocuments;
+    private String status;
+    private List<UUID> invoiceIds;
+    private List<FailedDocumentDto> failures;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/dto/FailedDocumentDto.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.dto;
+
+import java.util.UUID;
+
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+/**
+ * Data Transfer Object for documents that failed processing.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class FailedDocumentDto {
+    private UUID documentId;
+    private String errorCode;
+    private String errorMessage;
+}
+
+// --------------------------------------------------
+// FILE: src/main/java/com/testsdlc/iims/invoiceprocessing/mapper/InvoiceMapper.java
+// --------------------------------------------------
+
+package com.testsdlc.iims.invoiceprocessing.mapper;
+
+import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.testsdlc.iims.invoiceprocessing.domain.Invoice;
+import com.testsdlc.iims.invoiceprocessing.domain.InvoiceField;
+import com.testsdlc.iims.invoiceprocessing.domain.TaxEntry;
+import com.testsdlc.iims.invoiceprocessing.dto.InvoiceDto;
+import com.testsdlc.iims.invoiceprocessing.dto.InvoiceFieldDto;
+import com.testsdlc.iims.invoiceprocessing.dto.TaxEntryDto;
+
+import java.util.stream.Collectors;
+
+/**
+ * Mapper for converting between Invoice domain objects and DTOs.
+ */
+@Component
+public class InvoiceMapper {
+    
+    /**
+     * Converts an Invoice entity to its DTO representation.
+     * 
+     * @param invoice the entity to convert
+     * @return the DTO representation
+     */
+    public InvoiceDto toDto(Invoice invoice) {
+        if (invoice == null) {
+            return null;
+        }
+        
+        return InvoiceDto.builder()
+            .id(invoice.getId())
+            .invoiceNumber(invoice.getInvoiceNumber())
+            .invoiceDate(invoice.getInvoiceDate())
+            .clientId(invoice.getClientId())
+            .vendorId(invoice.getVendorId())
+            .templateId(invoice.getTemplateId())
+            .documentId(invoice.getDocumentId())
+            .status(invoice.getStatus() != null ? invoice.getStatus().name() : null)
+            .totalAmount(invoice.getTotalAmount())
+            .taxableAmount(invoice.getTaxableAmount())
+            .currency(invoice.getCurrency())
+            .createdAt(invoice.getCreatedAt())
+            .updatedAt(invoice.getUpdatedAt())
+            .processedAt(invoice.getProcessedAt())
+            .fields(invoice.getFields() != null ? invoice.getFields().stream()
+                .map(this::toFieldDto)
+                .collect(Collectors.toList()) : null)
+            .taxEntries(invoice.getTaxEntries() != null ? invoice.getTaxEntries().stream()
+                .map(this::toTaxEntryDto)
+                .collect(Collectors.toList()) : null)
+            .workflowId(invoice.getWorkflowId())
+            .workflowStatus(invoice.getWorkflowStatus())
+            .errorCode(invoice.getErrorCode())
+            .errorDescription(invoice.getErrorDescription())
+            .build();
+    }
+    
+    /**
+     * Converts an InvoiceField entity to its DTO representation.
+     * 
+     * @param field the entity to convert
+     * @return the DTO representation
+     */
+    public InvoiceFieldDto toFieldDto(InvoiceField field) {
+        if (field == null) {
+            return null;
+        }
+        
+        return InvoiceFieldDto.builder()
+            .id(field.getId())
+            .name(field.getName())
+            .value(field.getValue())
+            .extractionConfidence(field.getExtractionConfidence())
+            .validationStatus(field.getValidationStatus() != null ? field.getValidationStatus().name() : null)
+            .validationMessage(field.getValidationMessage())
+            .
